@@ -1,0 +1,382 @@
+import cv2
+import numpy as np
+import pygame
+import time
+import threading
+from tkinter import Tk, filedialog, Frame, Label, Button, Scale, HORIZONTAL
+import tkinter as tk
+import os
+
+
+class UIManager:
+    def __init__(self, width=1280, height=720):
+        """Initialize the UI manager.
+        
+        Args:
+            width: Window width
+            height: Window height
+        """
+        self.width = width
+        self.height = height
+        self.running = False
+        
+        # OpenCV window
+        self.window_name = "AirGroove"
+        
+        # Display frames
+        self.webcam_frame = None
+        self.display_frame = None
+        self.last_frame_time = 0
+        self.fps = 0
+        
+        # Control panel
+        self.control_panel = None
+        self.control_panel_thread = None
+        
+        # Audio visualizer
+        self.visualizer_data = np.zeros(64)
+        
+        # User feedback
+        self.gestures = {}
+        self.audio_status = {}
+        
+        # Track selection dialog
+        self.track_file = None
+        
+        # Status callbacks
+        self.on_control_changed = None
+        self.on_file_selected = None
+        
+        # Touch targets for UI elements
+        self.touch_targets = []
+        
+    def start(self):
+        """Start the UI."""
+        if self.running:
+            return
+            
+        self.running = True
+        
+        # Create OpenCV window
+        cv2.namedWindow(self.window_name, cv2.WINDOW_NORMAL)
+        cv2.resizeWindow(self.window_name, self.width, self.height)
+        
+        # Start control panel in separate thread
+        self.control_panel_thread = threading.Thread(target=self._run_control_panel)
+        self.control_panel_thread.daemon = True
+        self.control_panel_thread.start()
+    
+    def stop(self):
+        """Stop the UI."""
+        self.running = False
+        
+        # Close OpenCV window
+        cv2.destroyAllWindows()
+        
+        # Wait for control panel thread to finish
+        if self.control_panel_thread and self.control_panel_thread.is_alive():
+            self.control_panel.quit()
+            self.control_panel_thread.join(timeout=1.0)
+    
+    def update_frame(self, frame):
+        """Update the webcam frame.
+        
+        Args:
+            frame: OpenCV image (BGR format)
+        """
+        if frame is None:
+            return
+            
+        # Calculate FPS
+        current_time = time.time()
+        if self.last_frame_time > 0:
+            self.fps = 1.0 / (current_time - self.last_frame_time)
+        self.last_frame_time = current_time
+        
+        # Resize frame if needed
+        if frame.shape[1] != self.width or frame.shape[0] != self.height:
+            self.webcam_frame = cv2.resize(frame, (self.width, self.height))
+        else:
+            self.webcam_frame = frame.copy()
+    
+    def update_gestures(self, gestures):
+        """Update detected gestures info.
+        
+        Args:
+            gestures: Dictionary of detected gestures
+        """
+        self.gestures = gestures
+    
+    def update_audio_status(self, status):
+        """Update audio playback status.
+        
+        Args:
+            status: Dictionary with audio status
+        """
+        self.audio_status.update(status)
+    
+    def update_visualizer(self, fft_data):
+        """Update audio visualizer data.
+        
+        Args:
+            fft_data: Array of FFT magnitudes
+        """
+        # Normalize and smooth the visualizer data
+        if len(fft_data) > 0:
+            # Resize to fixed number of bands
+            bands = 64
+            bin_size = max(1, len(fft_data) // bands)
+            
+            new_data = np.array([
+                np.mean(fft_data[i:i+bin_size]) 
+                for i in range(0, len(fft_data), bin_size)
+            ][:bands])
+            
+            # Apply logarithmic scaling and normalization
+            new_data = np.log10(new_data + 1)
+            max_val = np.max(new_data) if np.max(new_data) > 0 else 1
+            new_data = new_data / max_val
+            
+            # Smooth transition
+            alpha = 0.3
+            self.visualizer_data = alpha * new_data + (1 - alpha) * self.visualizer_data
+    
+    def render(self):
+        """Render the UI display frame."""
+        if self.webcam_frame is None:
+            # Create empty frame
+            self.display_frame = np.zeros((self.height, self.width, 3), dtype=np.uint8)
+            cv2.putText(
+                self.display_frame,
+                "No camera input",
+                (self.width // 2 - 100, self.height // 2),
+                cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2
+            )
+        else:
+            # Use webcam frame as base
+            self.display_frame = self.webcam_frame.copy()
+            
+            # Add UI elements
+            self._draw_audio_visualizer()
+            self._draw_gesture_feedback()
+            self._draw_playback_controls()
+            self._draw_status_info()
+        
+        # Display the frame
+        cv2.imshow(self.window_name, self.display_frame)
+        key = cv2.waitKey(1) & 0xFF
+        
+        # Handle keyboard input
+        if key == 27:  # ESC key
+            return False
+        elif key == ord('o'):
+            self.open_file_dialog()
+        elif key == ord(' '):
+            if self.on_control_changed:
+                self.on_control_changed({'play_pause': True})
+        
+        return True
+    
+    def open_file_dialog(self):
+        """Open file selection dialog."""
+        # Create a temporary Tkinter root window
+        root = Tk()
+        root.withdraw()  # Hide the root window
+        
+        # Show file dialog
+        file_path = filedialog.askopenfilename(
+            title="Select Audio File",
+            filetypes=[
+                ("Audio Files", "*.mp3 *.wav *.ogg *.flac"),
+                ("All Files", "*.*")
+            ]
+        )
+        
+        root.destroy()
+        
+        if file_path:
+            self.track_file = file_path
+            
+            # Call callback
+            if self.on_file_selected:
+                self.on_file_selected(file_path)
+    
+    def _draw_audio_visualizer(self):
+        """Draw audio visualizer on the display frame."""
+        if self.display_frame is None:
+            return
+            
+        # Draw at the bottom of the frame
+        vis_height = 100
+        vis_width = self.width
+        vis_y = self.height - vis_height
+        
+        # Draw background
+        cv2.rectangle(
+            self.display_frame,
+            (0, vis_y),
+            (vis_width, self.height),
+            (0, 0, 0),
+            -1
+        )
+        
+        # Draw FFT bars
+        bar_width = vis_width // len(self.visualizer_data)
+        for i, magnitude in enumerate(self.visualizer_data):
+            bar_height = int(magnitude * vis_height)
+            cv2.rectangle(
+                self.display_frame,
+                (i * bar_width, self.height - bar_height),
+                ((i + 1) * bar_width - 1, self.height),
+                (0, 255, 255),
+                -1
+            )
+    
+    def _draw_gesture_feedback(self):
+        """Draw gesture feedback on the display frame."""
+        if self.display_frame is None or not self.gestures:
+            return
+            
+        # Draw panel on the right side
+        panel_width = 250
+        panel_x = self.width - panel_width
+        
+        # Background
+        cv2.rectangle(
+            self.display_frame,
+            (panel_x, 0),
+            (self.width, self.height - 100),
+            (0, 0, 0, 0.7),
+            -1
+        )
+        
+        # Title
+        cv2.putText(
+            self.display_frame,
+            "Detected Gestures",
+            (panel_x + 10, 30),
+            cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2
+        )
+        
+        # Display gesture states
+        y = 70
+        for gesture, value in self.gestures.items():
+            if isinstance(value, bool):
+                color = (0, 255, 0) if value else (100, 100, 100)
+                cv2.putText(
+                    self.display_frame,
+                    f"{gesture}: {'Active' if value else 'Inactive'}",
+                    (panel_x + 10, y),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 1
+                )
+            else:
+                # Continuous value - show as bar
+                cv2.putText(
+                    self.display_frame,
+                    f"{gesture}:",
+                    (panel_x + 10, y),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1
+                )
+                
+                # Convert to 0-1 range if needed
+                if gesture == 'palm_tilt':
+                    # Convert from -1:1 to 0:1
+                    norm_value = (value + 1) / 2
+                else:
+                    norm_value = value
+                
+                bar_width = 150
+                filled_width = int(bar_width * norm_value)
+                
+                # Draw empty bar
+                cv2.rectangle(
+                    self.display_frame,
+                    (panel_x + 80, y - 15),
+                    (panel_x + 80 + bar_width, y - 5),
+                    (100, 100, 100),
+                    1
+                )
+                
+                # Draw filled part
+                cv2.rectangle(
+                    self.display_frame,
+                    (panel_x + 80, y - 15),
+                    (panel_x + 80 + filled_width, y - 5),
+                    (0, 255, 0),
+                    -1
+                )
+            
+            y += 30
+    
+    def _draw_playback_controls(self):
+        """Draw playback controls on the display frame."""
+        if self.display_frame is None:
+            return
+            
+        # Draw at the top center
+        controls_y = 50
+        controls_width = 400
+        controls_x = (self.width - controls_width) // 2
+        
+        # Background
+        cv2.rectangle(
+            self.display_frame,
+            (controls_x - 20, controls_y - 40),
+            (controls_x + controls_width + 20, controls_y + 50),
+            (0, 0, 0, 0.7),
+            -1
+        )
+        
+        # Track info
+        track_name = self.audio_status.get('track', 'No track loaded')
+        cv2.putText(
+            self.display_frame,
+            track_name,
+            (controls_x, controls_y - 10),
+            cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2
+        )
+        
+        # Play/pause button
+        playing = self.audio_status.get('playing', False)
+        button_color = (0, 255, 0) if playing else (0, 200, 200)
+        
+        # Add play/pause button as touch target
+        play_button_rect = (controls_x, controls_y, 40, 40)
+        self.touch_targets = [('play_pause', play_button_rect)]
+        
+        cv2.rectangle(
+            self.display_frame,
+            (play_button_rect[0], play_button_rect[1]),
+            (play_button_rect[0] + play_button_rect[2], play_button_rect[1] + play_button_rect[3]),
+            button_color,
+            -1
+        )
+        
+        # Play/pause icon
+        if playing:
+            # Pause icon
+            cv2.rectangle(
+                self.display_frame,
+                (controls_x + 10, controls_y + 10),
+                (controls_x + 20, controls_y + 30),
+                (0, 0, 0),
+                -1
+            )
+            cv2.rectangle(
+                self.display_frame,
+                (controls_x + 25, controls_y + 10),
+                (controls_x + 35, controls_y + 30),
+                (0, 0, 0),
+                -1
+            )
+        else:
+            # Play icon
+            points = np.array([
+                [controls_x + 15, controls_y + 10],
+                [controls_x + 15, controls_y + 30],
+                [controls_x + 35, controls_y + 20]
+            ])
+            cv2.fillPoly(self.display_frame, [points], (0, 0, 0))
+        
+        # Progress bar
+        position = self.audio_status.get('position', 0)
