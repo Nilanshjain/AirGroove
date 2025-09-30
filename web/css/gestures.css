@@ -1,0 +1,323 @@
+/* Gesture-specific styling and visual feedback */
+
+/* Palm-Style Gesture Cursor */
+.gesture-pointer {
+    position: fixed;
+    pointer-events: none;
+    z-index: 1000;
+    transform: translate(-50%, -50%);
+    transition: all 0.1s ease;
+    opacity: 0;
+    font-size: 48px;
+    text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.8);
+    filter: drop-shadow(0 0 15px rgba(0, 255, 136, 0.8));
+    /* Debug background for testing */
+    background: rgba(255, 0, 0, 0.3);
+    width: 60px;
+    height: 60px;
+}
+
+.gesture-pointer.active {
+    opacity: 1;
+}
+
+.gesture-pointer::before {
+    content: '✋';
+    display: block;
+    animation: cursor-pulse 1.5s infinite;
+}
+
+/* Gesture-specific cursor styles */
+.gesture-pointer.closed_fist::before {
+    content: '✊';
+    display: block;
+    color: #ff6b6b;
+    filter: drop-shadow(0 0 15px rgba(255, 107, 107, 0.8));
+    animation: fist-pulse 1s infinite;
+}
+
+.gesture-pointer.pinch::before {
+    content: '👌';
+    display: block;
+    color: #ffa726;
+    filter: drop-shadow(0 0 15px rgba(255, 167, 38, 0.8));
+    animation: cursor-pulse 1.2s infinite;
+}
+
+.gesture-pointer.pointer::before {
+    content: '👉';
+    display: block;
+    color: #42a5f5;
+    filter: drop-shadow(0 0 15px rgba(66, 165, 245, 0.8));
+    animation: cursor-pulse 1.2s infinite;
+}
+
+.gesture-pointer.two_fingers::before {
+    content: '✌️';
+    display: block;
+    color: #ab47bc;
+    filter: drop-shadow(0 0 15px rgba(171, 71, 188, 0.8));
+    animation: cursor-pulse 1.2s infinite;
+}
+
+.gesture-pointer.open_palm::before {
+    content: '✋';
+    display: block;
+    color: #66bb6a;
+    filter: drop-shadow(0 0 15px rgba(102, 187, 106, 0.8));
+    animation: cursor-pulse 1.5s infinite;
+}
+
+/* Default and none gesture states */
+.gesture-pointer.none::before {
+    content: '✋';
+    color: #88ccaa;
+    filter: drop-shadow(0 0 10px rgba(136, 204, 170, 0.6));
+    opacity: 0.7;
+}
+
+/* Legacy elements - keep for backward compatibility but hide */
+.pointer-inner,
+.pointer-trail {
+    display: none;
+}
+
+/* Cursor Animation Keyframes */
+@keyframes cursor-pulse {
+    0%, 100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.1);
+        opacity: 0.8;
+    }
+}
+
+@keyframes fist-pulse {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.2);
+        filter: drop-shadow(0 0 25px rgba(255, 107, 107, 1));
+    }
+}
+
+@keyframes pulse {
+    0% {
+        transform: translate(-50%, -50%) scale(0.8);
+        opacity: 1;
+    }
+    100% {
+        transform: translate(-50%, -50%) scale(1.5);
+        opacity: 0;
+    }
+}
+
+/* Gesture-based states */
+.gesture-pointer.fist .pointer-inner {
+    background: radial-gradient(circle, #ff4444 0%, #ff8800 70%, transparent 100%);
+    box-shadow: 0 0 20px rgba(255, 68, 68, 0.6);
+    transform: scale(1.2);
+}
+
+.gesture-pointer.pinch .pointer-inner {
+    background: radial-gradient(circle, #ffaa00 0%, #ff6600 70%, transparent 100%);
+    box-shadow: 0 0 20px rgba(255, 170, 0, 0.6);
+}
+
+.gesture-pointer.pointer .pointer-inner {
+    background: radial-gradient(circle, #0099ff 0%, #0066cc 70%, transparent 100%);
+    box-shadow: 0 0 20px rgba(0, 153, 255, 0.6);
+}
+
+.gesture-pointer.two-fingers .pointer-inner {
+    background: radial-gradient(circle, #aa00ff 0%, #6600cc 70%, transparent 100%);
+    box-shadow: 0 0 20px rgba(170, 0, 255, 0.6);
+}
+
+/* Hover effects for UI elements */
+.hoverable {
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+.hoverable.hovered {
+    transform: scale(1.05);
+    box-shadow: 0 0 30px rgba(0, 255, 136, 0.4);
+    border-color: #00ff88 !important;
+}
+
+.hoverable.hovered::before {
+    content: '';
+    position: absolute;
+    top: -3px;
+    left: -3px;
+    right: -3px;
+    bottom: -3px;
+    background: linear-gradient(45deg, #00ff88, #0099ff, #00ff88);
+    border-radius: inherit;
+    z-index: -1;
+    opacity: 0.3;
+    animation: glow 2s infinite;
+}
+
+@keyframes glow {
+    0%, 100% {
+        opacity: 0.3;
+    }
+    50% {
+        opacity: 0.6;
+    }
+}
+
+/* Gesture state indicators */
+.gesture-state-browsing {
+    border-color: #555 !important;
+}
+
+.gesture-state-selecting {
+    border-color: #ffaa00 !important;
+    box-shadow: 0 0 20px rgba(255, 170, 0, 0.3);
+}
+
+.gesture-state-controlling {
+    border-color: #00ff88 !important;
+    box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
+}
+
+/* Mode-specific gesture feedback */
+.mode-fx-active .gesture-pointer .pointer-inner {
+    background: radial-gradient(circle, #ff6b35 0%, #ff8c65 70%, transparent 100%);
+}
+
+.mode-loop-active .gesture-pointer .pointer-inner {
+    background: radial-gradient(circle, #4ecdc4 0%, #44a08d 70%, transparent 100%);
+}
+
+.mode-scratch-active .gesture-pointer .pointer-inner {
+    background: radial-gradient(circle, #f093fb 0%, #f5576c 70%, transparent 100%);
+}
+
+/* Hand confidence indicators */
+.confidence-high {
+    background: linear-gradient(90deg, #00ff88, #00cc66) !important;
+}
+
+.confidence-medium {
+    background: linear-gradient(90deg, #ffaa00, #ff8800) !important;
+}
+
+.confidence-low {
+    background: linear-gradient(90deg, #ff4444, #cc3333) !important;
+}
+
+/* Gesture transition effects */
+.gesture-transition {
+    animation: gestureChange 0.3s ease;
+}
+
+@keyframes gestureChange {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.1);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+/* Selection feedback */
+.selecting-feedback {
+    position: relative;
+    overflow: hidden;
+}
+
+.selecting-feedback::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(0, 255, 136, 0.3), transparent);
+    animation: selection-sweep 0.8s ease;
+}
+
+@keyframes selection-sweep {
+    0% {
+        left: -100%;
+    }
+    100% {
+        left: 100%;
+    }
+}
+
+/* Audio control feedback */
+.audio-control-active {
+    position: relative;
+}
+
+.audio-control-active::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 10px;
+    height: 10px;
+    background: #00ff88;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    animation: control-pulse 1s infinite;
+}
+
+@keyframes control-pulse {
+    0% {
+        transform: translate(-50%, -50%) scale(0);
+        opacity: 1;
+    }
+    100% {
+        transform: translate(-50%, -50%) scale(3);
+        opacity: 0;
+    }
+}
+
+/* Debug gesture info */
+.gesture-debug-info {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    background: rgba(0, 0, 0, 0.8);
+    padding: 10px;
+    border-radius: 8px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.8rem;
+    color: #00ff88;
+    z-index: 999;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.gesture-debug-info.visible {
+    opacity: 1;
+}
+
+/* Responsive gesture feedback */
+@media (max-width: 1200px) {
+    .gesture-pointer {
+        transform: translate(-50%, -50%) scale(0.8);
+    }
+
+    .pointer-inner {
+        width: 16px;
+        height: 16px;
+    }
+
+    .pointer-trail {
+        width: 32px;
+        height: 32px;
+    }
+}

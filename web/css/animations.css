@@ -1,0 +1,344 @@
+/* Smooth animations and transitions for the DJ interface */
+
+/* Global animation settings */
+* {
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Loading animations */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.fade-in {
+    animation: fadeIn 0.6s ease forwards;
+}
+
+/* Button press animations */
+@keyframes buttonPress {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(0.95);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+.button-press {
+    animation: buttonPress 0.2s ease;
+}
+
+/* Mode selection animations */
+@keyframes modeActivate {
+    0% {
+        transform: scale(1) rotate(0deg);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    }
+    50% {
+        transform: scale(1.1) rotate(2deg);
+        box-shadow: 0 8px 30px rgba(0, 255, 136, 0.4);
+    }
+    100% {
+        transform: scale(1.05) rotate(0deg);
+        box-shadow: 0 6px 25px rgba(0, 255, 136, 0.3);
+    }
+}
+
+.mode-activate {
+    animation: modeActivate 0.5s ease forwards;
+}
+
+/* Waveform animations */
+@keyframes waveformLoad {
+    0% {
+        opacity: 0;
+        transform: scaleX(0);
+    }
+    100% {
+        opacity: 1;
+        transform: scaleX(1);
+    }
+}
+
+.waveform-load {
+    animation: waveformLoad 1s ease forwards;
+}
+
+/* Progress indicator animations */
+@keyframes progressMove {
+    0% {
+        left: 0%;
+    }
+    100% {
+        left: 100%;
+    }
+}
+
+.progress-animate {
+    animation: progressMove linear;
+}
+
+/* Volume meter animations */
+@keyframes volumeBounce {
+    0%, 100% {
+        transform: scaleY(1);
+    }
+    50% {
+        transform: scaleY(1.1);
+    }
+}
+
+.volume-bounce {
+    animation: volumeBounce 0.3s ease;
+}
+
+/* Crossfader animations */
+@keyframes crossfaderMove {
+    0% {
+        transform: translateX(-50%) scale(1);
+    }
+    50% {
+        transform: translateX(-50%) scale(1.1);
+    }
+    100% {
+        transform: translateX(-50%) scale(1);
+    }
+}
+
+.crossfader-move {
+    animation: crossfaderMove 0.3s ease;
+}
+
+/* Gesture feedback animations */
+@keyframes gestureDetected {
+    0% {
+        transform: scale(1);
+        background-color: var(--current-bg);
+    }
+    50% {
+        transform: scale(1.05);
+        background-color: rgba(0, 255, 136, 0.2);
+    }
+    100% {
+        transform: scale(1);
+        background-color: var(--current-bg);
+    }
+}
+
+.gesture-detected {
+    animation: gestureDetected 0.4s ease;
+}
+
+/* Connection status animations */
+@keyframes connectionPulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
+
+.connection-pulse {
+    animation: connectionPulse 2s infinite;
+}
+
+/* Audio control animations */
+@keyframes audioControlFeedback {
+    0% {
+        transform: translateY(0);
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    }
+    50% {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0, 255, 136, 0.3);
+    }
+    100% {
+        transform: translateY(0);
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    }
+}
+
+.audio-control-feedback {
+    animation: audioControlFeedback 0.3s ease;
+}
+
+/* Deck state animations */
+@keyframes deckActive {
+    0% {
+        border-color: #555;
+    }
+    100% {
+        border-color: #00ff88;
+        box-shadow: 0 0 20px rgba(0, 255, 136, 0.2);
+    }
+}
+
+.deck-active {
+    animation: deckActive 0.4s ease forwards;
+}
+
+/* Mode transition animations */
+@keyframes modeTransition {
+    0% {
+        opacity: 1;
+        transform: translateX(0);
+    }
+    50% {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.mode-transition {
+    animation: modeTransition 0.6s ease;
+}
+
+/* Error feedback animations */
+@keyframes errorShake {
+    0%, 100% {
+        transform: translateX(0);
+    }
+    10%, 30%, 50%, 70%, 90% {
+        transform: translateX(-5px);
+    }
+    20%, 40%, 60%, 80% {
+        transform: translateX(5px);
+    }
+}
+
+.error-shake {
+    animation: errorShake 0.6s ease;
+}
+
+/* Success feedback animations */
+@keyframes successGlow {
+    0% {
+        box-shadow: 0 0 0 0 rgba(0, 255, 136, 0.7);
+    }
+    70% {
+        box-shadow: 0 0 0 20px rgba(0, 255, 136, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(0, 255, 136, 0);
+    }
+}
+
+.success-glow {
+    animation: successGlow 0.8s ease;
+}
+
+/* Floating animations */
+@keyframes float {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-10px);
+    }
+}
+
+.float {
+    animation: float 3s ease-in-out infinite;
+}
+
+/* Text typing animation */
+@keyframes typing {
+    from {
+        width: 0;
+    }
+    to {
+        width: 100%;
+    }
+}
+
+@keyframes blink {
+    0%, 50% {
+        border-color: transparent;
+    }
+    51%, 100% {
+        border-color: #00ff88;
+    }
+}
+
+.typing-effect {
+    overflow: hidden;
+    border-right: 2px solid #00ff88;
+    white-space: nowrap;
+    animation: typing 2s steps(40), blink 1s infinite;
+}
+
+/* Smooth transitions for all interactive elements */
+.interactive {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.interactive:hover {
+    transform: translateY(-2px);
+}
+
+.interactive:active {
+    transform: translateY(0);
+    transition-duration: 0.1s;
+}
+
+/* Parallax scroll effect for background elements */
+@keyframes parallaxMove {
+    0% {
+        transform: translateX(-100px);
+    }
+    100% {
+        transform: translateX(100px);
+    }
+}
+
+.parallax-bg {
+    animation: parallaxMove 20s linear infinite;
+}
+
+/* Responsive animation adjustments */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    ::before,
+    ::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+@media (max-width: 768px) {
+    /* Reduce animation intensity on smaller screens */
+    .gesture-pointer {
+        animation-duration: 0.8s;
+    }
+
+    .mode-btn {
+        transition-duration: 0.2s;
+    }
+
+    .deck {
+        transition-duration: 0.2s;
+    }
+}
+
+/* Hardware acceleration for smooth animations */
+.hardware-accelerated {
+    will-change: transform;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+}

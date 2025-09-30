@@ -1,0 +1,280 @@
+/* Gesture Button System Styles */
+
+/* Gesture Command Palette */
+.gesture-command-palette {
+    position: fixed;
+    bottom: 100px;
+    left: 20px;
+    background: rgba(0, 0, 0, 0.9);
+    border: 2px solid #00ff88;
+    border-radius: 12px;
+    padding: 15px;
+    z-index: 1000;
+    min-width: 300px;
+    transition: all 0.3s ease;
+}
+
+.gesture-command-palette h4 {
+    color: #00ff88;
+    margin: 0 0 10px 0;
+    font-size: 16px;
+    text-align: center;
+}
+
+.gesture-commands {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.gesture-command {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.05);
+    transition: all 0.2s ease;
+}
+
+.gesture-command:hover {
+    background: rgba(0, 255, 136, 0.1);
+    transform: translateX(5px);
+}
+
+.gesture-icon {
+    font-size: 18px;
+    min-width: 25px;
+    text-align: center;
+}
+
+.gesture-name {
+    color: #ffffff;
+    font-weight: bold;
+    min-width: 80px;
+}
+
+.gesture-action {
+    color: #cccccc;
+    font-size: 14px;
+}
+
+/* Gesture triggered animation */
+.gesture-command-palette.gesture-triggered {
+    transform: scale(1.05);
+    border-color: #ffaa00;
+    box-shadow: 0 0 20px rgba(255, 170, 0, 0.5);
+}
+
+/* Gesture Button Styles */
+.gesture-button {
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.gesture-button .button-icon {
+    display: block;
+    transition: all 0.3s ease;
+}
+
+.gesture-button .gesture-hint {
+    position: absolute;
+    bottom: -25px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.9);
+    color: #00ff88;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+    opacity: 0;
+    transition: all 0.3s ease;
+    pointer-events: none;
+    z-index: 100;
+}
+
+/* Gesture button hover states */
+.gesture-button.hovered .gesture-hint {
+    opacity: 1;
+    bottom: -30px;
+}
+
+.gesture-button.gesture-ready {
+    border-color: #ffaa00;
+    box-shadow: 0 0 10px rgba(255, 170, 0, 0.3);
+}
+
+.gesture-button.gesture-ready .button-icon {
+    transform: scale(1.1);
+}
+
+.gesture-button.gesture-match {
+    border-color: #00ff88;
+    background: rgba(0, 255, 136, 0.2);
+    box-shadow: 0 0 15px rgba(0, 255, 136, 0.5);
+}
+
+.gesture-button.gesture-match .button-icon {
+    transform: scale(1.2);
+    animation: pulse-success 0.6s ease-in-out;
+}
+
+@keyframes pulse-success {
+    0%, 100% {
+        transform: scale(1.2);
+    }
+    50% {
+        transform: scale(1.4);
+        box-shadow: 0 0 20px rgba(0, 255, 136, 0.8);
+    }
+}
+
+/* Quick Gesture Feedback */
+.quick-gesture-feedback {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 0, 0.9);
+    color: #fff;
+    padding: 15px 25px;
+    border-radius: 8px;
+    font-weight: bold;
+    font-size: 16px;
+    z-index: 2000;
+    opacity: 0;
+    transition: all 0.3s ease;
+    pointer-events: none;
+}
+
+.quick-gesture-feedback.success {
+    opacity: 1;
+    border: 2px solid #00ff88;
+    color: #00ff88;
+    animation: quick-feedback-success 0.8s ease-out;
+}
+
+.quick-gesture-feedback.info {
+    opacity: 1;
+    border: 2px solid #0099ff;
+    color: #0099ff;
+    animation: quick-feedback-info 0.8s ease-out;
+}
+
+@keyframes quick-feedback-success {
+    0% {
+        transform: translate(-50%, -50%) scale(0.8);
+        opacity: 0;
+    }
+    20% {
+        transform: translate(-50%, -50%) scale(1.1);
+        opacity: 1;
+    }
+    80% {
+        transform: translate(-50%, -50%) scale(1.0);
+        opacity: 1;
+    }
+    100% {
+        transform: translate(-50%, -50%) scale(0.9);
+        opacity: 0;
+    }
+}
+
+@keyframes quick-feedback-info {
+    0% {
+        transform: translate(-50%, -50%) scale(0.8);
+        opacity: 0;
+    }
+    20% {
+        transform: translate(-50%, -50%) scale(1.05);
+        opacity: 1;
+    }
+    80% {
+        transform: translate(-50%, -50%) scale(1.0);
+        opacity: 1;
+    }
+    100% {
+        transform: translate(-50%, -50%) scale(0.9);
+        opacity: 0;
+    }
+}
+
+/* Enhanced Mode Button Animations */
+.mode-btn.selecting-feedback {
+    animation: mode-select-pulse 0.8s ease-out;
+}
+
+@keyframes mode-select-pulse {
+    0% {
+        transform: scale(1);
+        box-shadow: 0 0 0 rgba(0, 255, 136, 0.7);
+    }
+    25% {
+        transform: scale(1.1);
+        box-shadow: 0 0 20px rgba(0, 255, 136, 0.7);
+    }
+    50% {
+        transform: scale(1.05);
+        box-shadow: 0 0 30px rgba(0, 255, 136, 0.5);
+    }
+    100% {
+        transform: scale(1);
+        box-shadow: 0 0 10px rgba(0, 255, 136, 0.3);
+    }
+}
+
+/* Gesture Pointer Enhancements */
+.gesture-pointer.quick-gesture {
+    animation: pointer-quick-gesture 0.5s ease-out;
+}
+
+@keyframes pointer-quick-gesture {
+    0% {
+        transform: scale(1);
+        background: rgba(255, 255, 255, 0.8);
+    }
+    50% {
+        transform: scale(1.5);
+        background: rgba(0, 255, 136, 0.9);
+        box-shadow: 0 0 20px rgba(0, 255, 136, 0.8);
+    }
+    100% {
+        transform: scale(1);
+        background: rgba(255, 255, 255, 0.8);
+    }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .gesture-command-palette {
+        bottom: 80px;
+        left: 10px;
+        right: 10px;
+        min-width: auto;
+    }
+
+    .gesture-commands {
+        gap: 6px;
+    }
+
+    .gesture-command {
+        padding: 6px;
+        gap: 8px;
+    }
+
+    .gesture-icon {
+        font-size: 16px;
+        min-width: 20px;
+    }
+
+    .gesture-name {
+        min-width: 60px;
+        font-size: 14px;
+    }
+
+    .gesture-action {
+        font-size: 12px;
+    }
+}
