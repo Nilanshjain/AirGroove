@@ -60,17 +60,16 @@ class AirGrooveApp {
 
         // Handle audio updates
         this.wsClient.onAudioUpdate = (audioData) => {
-            this.updateAudioDisplay(audioData);
+            // Use the new audio controller for updates
+            if (window.audioController) {
+                window.audioController.updateAudioState(audioData);
+            }
         };
 
         // Handle system updates (FPS, status, etc.)
         this.wsClient.onSystemUpdate = (systemData) => {
             this.updateSystemStatus(systemData);
-
-            // Handle quick gesture feedback
-            if (systemData.quick_gesture && systemData.button_action) {
-                this.handleQuickGestureAction(systemData.quick_gesture);
-            }
+            // Quick gesture notifications removed
         };
 
         // Handle connection changes
@@ -360,39 +359,7 @@ class AirGrooveApp {
         }, 3000);
     }
 
-    handleQuickGestureAction(quickGesture) {
-        // Show visual feedback for quick gesture
-        const [hand, gesture] = quickGesture.split('_');
-
-        // Flash the corresponding gesture command in the palette
-        const commandPalette = document.querySelector('.gesture-command-palette');
-        if (commandPalette) {
-            commandPalette.classList.add('gesture-triggered');
-            setTimeout(() => {
-                commandPalette.classList.remove('gesture-triggered');
-            }, 800);
-        }
-
-        // Animate gesture pointer
-        const gesturePointer = document.getElementById('gesture-pointer');
-        if (gesturePointer) {
-            gesturePointer.classList.add('quick-gesture');
-            setTimeout(() => {
-                gesturePointer.classList.remove('quick-gesture');
-            }, 500);
-        }
-
-        // Show notification
-        const gestureNames = {
-            'pinch': '👌 Pinch → Deck A',
-            'pointer': '👉 Pointer → Deck B',
-            'two_fingers': '✌️ Two Fingers → Stop All',
-            'closed_fist': '✊ Fist → Action'
-        };
-
-        const gestureName = gestureNames[gesture] || gesture;
-        this.showNotification(`Quick Gesture: ${gestureName}`, 'success');
-    }
+    // Quick gesture action removed - no longer needed
 
     formatTime(seconds) {
         if (isNaN(seconds) || seconds < 0) return '00:00';
@@ -400,6 +367,97 @@ class AirGrooveApp {
         const mins = Math.floor(seconds / 60);
         const secs = Math.floor(seconds % 60);
         return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+
+    showHowToUse() {
+        // Create modal for How to Use guide
+        const modal = document.createElement('div');
+        modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+        `;
+
+        const content = document.createElement('div');
+        content.style.cssText = `
+            background: rgba(15, 15, 20, 0.98);
+            border: 1px solid rgba(124, 58, 237, 0.3);
+            border-radius: 12px;
+            padding: 30px;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            color: #e4e4e7;
+        `;
+
+        content.innerHTML = `
+            <h2 style="color: #b19aff; margin-bottom: 20px;">How to Use AirGroove</h2>
+
+            <h3 style="color: #888; margin: 20px 0 10px;">Single Hand Controls</h3>
+            <ul style="list-style: none; padding: 0;">
+                <li style="margin: 8px 0;">✊ <b>Closed Fist</b> - Play/Pause Deck (Left→A, Right→B)</li>
+                <li style="margin: 8px 0;">👌 <b>Pinch</b> - Load Track to Deck</li>
+                <li style="margin: 8px 0;">👉 <b>Pointer</b> - Sync/Cue Deck</li>
+                <li style="margin: 8px 0;">✌️ <b>Two Fingers</b> - Stop Deck</li>
+                <li style="margin: 8px 0;">✋ <b>Open Palm</b> - Swipe left/right to switch modes</li>
+            </ul>
+
+            <h3 style="color: #888; margin: 20px 0 10px;">Two Hand Combinations</h3>
+            <ul style="list-style: none; padding: 0;">
+                <li style="margin: 8px 0;"><b>Both Open Palms</b> - Neutral/Browse state</li>
+                <li style="margin: 8px 0;"><b>Left Fist + Right Pinch</b> - FX Filter control</li>
+                <li style="margin: 8px 0;"><b>Left Fist + Right Pointer</b> - FX Mix control</li>
+                <li style="margin: 8px 0;"><b>Right Fist + Left Pinch</b> - Loop Length</li>
+                <li style="margin: 8px 0;"><b>Right Fist + Left Pointer</b> - Loop Position</li>
+                <li style="margin: 8px 0;"><b>Both Pinch</b> - Crossfader control</li>
+                <li style="margin: 8px 0;"><b>Any + Two Fingers</b> - Stop all decks</li>
+            </ul>
+
+            <h3 style="color: #888; margin: 20px 0 10px;">Mode Switching</h3>
+            <p style="margin: 10px 0;">Swipe your open palm left or right to cycle through modes:</p>
+            <ul style="list-style: none; padding: 0;">
+                <li style="margin: 8px 0;"><b>FX Mode</b> - Effects control</li>
+                <li style="margin: 8px 0;"><b>Loop Mode</b> - Loop control</li>
+                <li style="margin: 8px 0;"><b>Scratch Mode</b> - Scratch/pitch control</li>
+            </ul>
+
+            <h3 style="color: #888; margin: 20px 0 10px;">Tips</h3>
+            <ul style="list-style: none; padding: 0;">
+                <li style="margin: 8px 0;">• No cursor - direct gesture control</li>
+                <li style="margin: 8px 0;">• Left hand controls Deck A</li>
+                <li style="margin: 8px 0;">• Right hand controls Deck B</li>
+                <li style="margin: 8px 0;">• Keep hands in camera view</li>
+                <li style="margin: 8px 0;">• Good lighting improves detection</li>
+            </ul>
+
+            <button onclick="this.parentElement.parentElement.remove()" style="
+                margin-top: 20px;
+                background: rgba(124, 58, 237, 0.2);
+                border: 1px solid rgba(124, 58, 237, 0.5);
+                color: #b19aff;
+                padding: 10px 20px;
+                border-radius: 6px;
+                cursor: pointer;
+                font-weight: 600;
+            ">Close</button>
+        `;
+
+        modal.appendChild(content);
+        document.body.appendChild(modal);
+
+        // Close on click outside
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.remove();
+            }
+        });
     }
 
     cleanup() {

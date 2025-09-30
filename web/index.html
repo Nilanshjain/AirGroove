@@ -4,60 +4,59 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AirGroove - Gesture DJ Interface</title>
+    <link rel="stylesheet" href="css/navbar.css">
     <link rel="stylesheet" href="css/dj-layout.css">
     <link rel="stylesheet" href="css/gestures.css">
     <link rel="stylesheet" href="css/animations.css">
     <link rel="stylesheet" href="css/gesture-buttons.css">
 </head>
 <body>
-    <div class="dj-interface">
-        <!-- Header with gesture status -->
+    <!-- Professional Navbar -->
+    <nav class="navbar">
+        <div class="navbar-brand">
+            <div class="navbar-logo">A</div>
+            <div class="navbar-title">AirGroove</div>
+        </div>
+        <div class="navbar-menu">
+            <a href="#" class="navbar-item active hoverable">Homepage</a>
+            <a href="#library" class="navbar-item hoverable">Library</a>
+            <a href="#how-to-use" class="navbar-item hoverable" onclick="window.app?.showHowToUse()">How to Use</a>
+            <a href="#settings" class="navbar-item hoverable">Settings</a>
+        </div>
+        <div class="navbar-profile hoverable">
+            <div class="profile-avatar">U</div>
+            <span class="profile-name">User</span>
+        </div>
+    </nav>
+
+    <div class="dj-interface" style="margin-top: 60px;">
+        <!-- Simplified Header with centered gesture display -->
         <header class="interface-header">
-            <div class="logo">
-                <h1>AirGroove</h1>
-                <span class="subtitle">Gesture DJ Interface</span>
-            </div>
-            <div class="gesture-status">
-                <div class="hand-indicator left-hand">
-                    <span class="hand-label">Left Hand</span>
-                    <div class="gesture-display" id="left-gesture">open_palm</div>
-                    <div class="confidence-bar">
-                        <div class="confidence-fill" id="left-confidence"></div>
+            <div class="gesture-display-container">
+                <div class="gesture-status">
+                    <div class="hand-indicator">
+                        <span class="hand-label">L</span>
+                        <div class="gesture-display" id="left-gesture">✋</div>
+                    </div>
+                    <div class="interaction-state" id="interaction-state">browsing</div>
+                    <div class="hand-indicator">
+                        <span class="hand-label">R</span>
+                        <div class="gesture-display" id="right-gesture">✋</div>
                     </div>
                 </div>
-                <div class="interaction-state" id="interaction-state">browsing</div>
-                <div class="hand-indicator right-hand">
-                    <span class="hand-label">Right Hand</span>
-                    <div class="gesture-display" id="right-gesture">open_palm</div>
-                    <div class="confidence-bar">
-                        <div class="confidence-fill" id="right-confidence"></div>
-                    </div>
+                <div class="mode-buttons">
+                    <button class="mode-btn" id="mode-fx" data-mode="fx">
+                        <span>FX</span>
+                    </button>
+                    <button class="mode-btn" id="mode-loop" data-mode="loop">
+                        <span>Loop</span>
+                    </button>
+                    <button class="mode-btn" id="mode-scratch" data-mode="scratch">
+                        <span>Scratch</span>
+                    </button>
                 </div>
             </div>
         </header>
-
-        <!-- Mode Selection Panel -->
-        <div class="mode-selection">
-            <h2>Control Modes</h2>
-            <div class="mode-buttons">
-                <button class="mode-btn" id="mode-fx" data-mode="fx">
-                    <div class="mode-icon">🎛️</div>
-                    <span>Control FX</span>
-                </button>
-                <button class="mode-btn" id="mode-loop" data-mode="loop">
-                    <div class="mode-icon">🔄</div>
-                    <span>Loop</span>
-                </button>
-                <button class="mode-btn" id="mode-scratch" data-mode="scratch">
-                    <div class="mode-icon">🎧</div>
-                    <span>Scratch</span>
-                </button>
-            </div>
-            <div class="mode-status">
-                <span>Current Mode: </span>
-                <span id="current-mode">None Selected</span>
-            </div>
-        </div>
 
         <!-- Main Interface -->
         <div class="main-interface">
@@ -68,19 +67,19 @@
                     <div class="deck-controls">
                         <button class="play-btn hoverable gesture-button" id="play-a" data-gesture="pinch" data-action="play_pause" data-deck="a">
                             <span class="button-icon">▶️</span>
-                            <span class="gesture-hint">👌 Pinch</span>
+                            <span class="gesture-hint">◐ Pinch</span>
                         </button>
                         <button class="stop-btn hoverable gesture-button" id="stop-a" data-gesture="two_fingers" data-action="stop" data-deck="a">
                             <span class="button-icon">⏹️</span>
-                            <span class="gesture-hint">✌️ Two Fingers</span>
+                            <span class="gesture-hint">◈ Two Fingers</span>
                         </button>
                         <span class="bpm" id="bpm-a">120.0</span>
                     </div>
                 </div>
 
-                <div class="track-info" id="track-info-a">
+                <div class="track-info hoverable" id="track-info-a" data-deck="a" data-action="load_track">
                     <div class="track-title">No Track Loaded</div>
-                    <div class="track-artist">Artist</div>
+                    <div class="track-artist">Click or fist gesture to load track</div>
                     <div class="track-time">
                         <span id="current-time-a">00:00</span> /
                         <span id="total-time-a">00:00</span>
@@ -90,6 +89,10 @@
                 <div class="waveform-container">
                     <canvas class="waveform" id="waveform-a" width="600" height="120"></canvas>
                     <div class="position-marker" id="position-a"></div>
+                    <button class="sync-btn hoverable" id="sync-a" data-deck="a">
+                        <span class="sync-icon">⟲</span>
+                        <span class="sync-label">SYNC</span>
+                    </button>
                 </div>
 
                 <div class="volume-control">
@@ -127,19 +130,19 @@
                     <div class="deck-controls">
                         <button class="play-btn hoverable gesture-button" id="play-b" data-gesture="pointer" data-action="play_pause" data-deck="b">
                             <span class="button-icon">▶️</span>
-                            <span class="gesture-hint">👉 Pointer</span>
+                            <span class="gesture-hint">▶ Pointer</span>
                         </button>
                         <button class="stop-btn hoverable gesture-button" id="stop-b" data-gesture="two_fingers" data-action="stop" data-deck="b">
                             <span class="button-icon">⏹️</span>
-                            <span class="gesture-hint">✌️ Two Fingers</span>
+                            <span class="gesture-hint">◈ Two Fingers</span>
                         </button>
                         <span class="bpm" id="bpm-b">120.0</span>
                     </div>
                 </div>
 
-                <div class="track-info" id="track-info-b">
+                <div class="track-info hoverable" id="track-info-b" data-deck="b" data-action="load_track">
                     <div class="track-title">No Track Loaded</div>
-                    <div class="track-artist">Artist</div>
+                    <div class="track-artist">Click or fist gesture to load track</div>
                     <div class="track-time">
                         <span id="current-time-b">00:00</span> /
                         <span id="total-time-b">00:00</span>
@@ -149,6 +152,10 @@
                 <div class="waveform-container">
                     <canvas class="waveform" id="waveform-b" width="600" height="120"></canvas>
                     <div class="position-marker" id="position-b"></div>
+                    <button class="sync-btn hoverable" id="sync-b" data-deck="b">
+                        <span class="sync-icon">⟲</span>
+                        <span class="sync-label">SYNC</span>
+                    </button>
                 </div>
 
                 <div class="volume-control">
@@ -161,51 +168,13 @@
             </div>
         </div>
 
-        <!-- Gesture Command Palette -->
-        <div class="gesture-command-palette">
-            <h4>Quick Gesture Commands</h4>
-            <div class="gesture-commands">
-                <div class="gesture-command">
-                    <span class="gesture-icon">👌</span>
-                    <span class="gesture-name">Pinch</span>
-                    <span class="gesture-action">Play/Pause Deck A</span>
-                </div>
-                <div class="gesture-command">
-                    <span class="gesture-icon">👉</span>
-                    <span class="gesture-name">Pointer</span>
-                    <span class="gesture-action">Play/Pause Deck B</span>
-                </div>
-                <div class="gesture-command">
-                    <span class="gesture-icon">✌️</span>
-                    <span class="gesture-name">Two Fingers</span>
-                    <span class="gesture-action">Stop All Decks</span>
-                </div>
-                <div class="gesture-command">
-                    <span class="gesture-icon">✊</span>
-                    <span class="gesture-name">Fist (on button)</span>
-                    <span class="gesture-action">Select Mode</span>
-                </div>
-            </div>
+        <!-- Connection status -->
+        <div class="connection-indicator">
+            <span id="connection-status">●</span>
         </div>
-
-        <!-- Footer with debug info -->
-        <footer class="debug-panel">
-            <div class="fps-counter">FPS: <span id="fps">0</span></div>
-            <div class="connection-status">
-                Status: <span id="connection-status">Disconnected</span>
-            </div>
-            <div class="gesture-debug">
-                <span id="debug-info">Waiting for gestures...</span>
-            </div>
-            <div class="quick-gesture-feedback" id="quick-gesture-feedback"></div>
-        </footer>
     </div>
 
-    <!-- Gesture Pointer -->
-    <div class="gesture-pointer" id="gesture-pointer">
-        <div class="pointer-inner"></div>
-        <div class="pointer-trail"></div>
-    </div>
+    <!-- Gesture cursors removed - using direct gesture control instead -->
 
     <!-- Scripts -->
     <script src="js/websocket-client.js"></script>

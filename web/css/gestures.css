@@ -1,79 +1,98 @@
 /* Gesture-specific styling and visual feedback */
 
-/* Palm-Style Gesture Cursor */
+/* Dual Gesture Cursors */
 .gesture-pointer {
     position: fixed;
     pointer-events: none;
     z-index: 1000;
     transform: translate(-50%, -50%);
-    transition: all 0.1s ease;
+    transition: opacity 0.2s ease;
     opacity: 0;
-    font-size: 48px;
-    text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.8);
-    filter: drop-shadow(0 0 15px rgba(0, 255, 136, 0.8));
-    /* Debug background for testing */
-    background: rgba(255, 0, 0, 0.3);
-    width: 60px;
-    height: 60px;
+    width: 48px;
+    height: 48px;
 }
 
 .gesture-pointer.active {
     opacity: 1;
 }
 
-.gesture-pointer::before {
-    content: '✋';
+.gesture-pointer.inactive {
+    opacity: 0.4;
+}
+
+/* Cursor Icons */
+.cursor-icon {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    display: none;
+    filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.3));
+}
+
+/* Left hand - blue tint */
+.left-hand-cursor .cursor-icon {
+    filter: drop-shadow(0 2px 8px rgba(59, 130, 246, 0.5));
+}
+
+/* Right hand - purple tint */
+.right-hand-cursor .cursor-icon {
+    filter: drop-shadow(0 2px 8px rgba(147, 51, 234, 0.5));
+}
+
+/* Show appropriate icon based on gesture */
+.gesture-pointer.open_palm .palm-icon,
+.gesture-pointer.browsing .palm-icon {
     display: block;
-    animation: cursor-pulse 1.5s infinite;
+}
+
+.gesture-pointer.closed_fist .fist-icon,
+.gesture-pointer.selecting .fist-icon {
+    display: block;
+}
+
+/* Default to palm if no specific gesture */
+.gesture-pointer:not(.closed_fist):not(.selecting) .palm-icon {
+    display: block;
 }
 
 /* Gesture-specific cursor styles */
 .gesture-pointer.closed_fist::before {
-    content: '✊';
-    display: block;
-    color: #ff6b6b;
-    filter: drop-shadow(0 0 15px rgba(255, 107, 107, 0.8));
-    animation: fist-pulse 1s infinite;
+    content: '●';
+    color: rgba(239, 68, 68, 0.8);
+    filter: drop-shadow(0 0 12px rgba(239, 68, 68, 0.5));
 }
 
 .gesture-pointer.pinch::before {
-    content: '👌';
-    display: block;
-    color: #ffa726;
-    filter: drop-shadow(0 0 15px rgba(255, 167, 38, 0.8));
-    animation: cursor-pulse 1.2s infinite;
+    content: '◐';
+    color: rgba(124, 58, 237, 0.8);
+    filter: drop-shadow(0 0 12px rgba(124, 58, 237, 0.5));
 }
 
 .gesture-pointer.pointer::before {
-    content: '👉';
-    display: block;
-    color: #42a5f5;
-    filter: drop-shadow(0 0 15px rgba(66, 165, 245, 0.8));
-    animation: cursor-pulse 1.2s infinite;
+    content: '▶';
+    color: rgba(124, 58, 237, 0.8);
+    filter: drop-shadow(0 0 12px rgba(124, 58, 237, 0.5));
 }
 
 .gesture-pointer.two_fingers::before {
-    content: '✌️';
-    display: block;
-    color: #ab47bc;
-    filter: drop-shadow(0 0 15px rgba(171, 71, 188, 0.8));
-    animation: cursor-pulse 1.2s infinite;
+    content: '◈';
+    color: rgba(168, 85, 247, 0.8);
+    filter: drop-shadow(0 0 12px rgba(168, 85, 247, 0.5));
 }
 
 .gesture-pointer.open_palm::before {
-    content: '✋';
-    display: block;
-    color: #66bb6a;
-    filter: drop-shadow(0 0 15px rgba(102, 187, 106, 0.8));
-    animation: cursor-pulse 1.5s infinite;
+    content: '◯';
+    color: rgba(124, 58, 237, 0.6);
+    filter: drop-shadow(0 0 8px rgba(124, 58, 237, 0.4));
 }
 
 /* Default and none gesture states */
 .gesture-pointer.none::before {
-    content: '✋';
-    color: #88ccaa;
-    filter: drop-shadow(0 0 10px rgba(136, 204, 170, 0.6));
-    opacity: 0.7;
+    content: '◯';
+    color: rgba(124, 58, 237, 0.5);
+    filter: drop-shadow(0 0 6px rgba(124, 58, 237, 0.3));
 }
 
 /* Legacy elements - keep for backward compatibility but hide */
@@ -82,38 +101,6 @@
     display: none;
 }
 
-/* Cursor Animation Keyframes */
-@keyframes cursor-pulse {
-    0%, 100% {
-        transform: scale(1);
-        opacity: 1;
-    }
-    50% {
-        transform: scale(1.1);
-        opacity: 0.8;
-    }
-}
-
-@keyframes fist-pulse {
-    0%, 100% {
-        transform: scale(1);
-    }
-    50% {
-        transform: scale(1.2);
-        filter: drop-shadow(0 0 25px rgba(255, 107, 107, 1));
-    }
-}
-
-@keyframes pulse {
-    0% {
-        transform: translate(-50%, -50%) scale(0.8);
-        opacity: 1;
-    }
-    100% {
-        transform: translate(-50%, -50%) scale(1.5);
-        opacity: 0;
-    }
-}
 
 /* Gesture-based states */
 .gesture-pointer.fist .pointer-inner {
@@ -140,51 +127,25 @@
 /* Hover effects for UI elements */
 .hoverable {
     position: relative;
-    transition: all 0.3s ease;
+    transition: all 0.2s ease;
 }
 
 .hoverable.hovered {
-    transform: scale(1.05);
-    box-shadow: 0 0 30px rgba(0, 255, 136, 0.4);
-    border-color: #00ff88 !important;
-}
-
-.hoverable.hovered::before {
-    content: '';
-    position: absolute;
-    top: -3px;
-    left: -3px;
-    right: -3px;
-    bottom: -3px;
-    background: linear-gradient(45deg, #00ff88, #0099ff, #00ff88);
-    border-radius: inherit;
-    z-index: -1;
-    opacity: 0.3;
-    animation: glow 2s infinite;
-}
-
-@keyframes glow {
-    0%, 100% {
-        opacity: 0.3;
-    }
-    50% {
-        opacity: 0.6;
-    }
+    border-color: rgba(124, 58, 237, 0.5) !important;
+    background: rgba(124, 58, 237, 0.08) !important;
 }
 
 /* Gesture state indicators */
 .gesture-state-browsing {
-    border-color: #555 !important;
+    border-color: rgba(255, 255, 255, 0.05) !important;
 }
 
 .gesture-state-selecting {
-    border-color: #ffaa00 !important;
-    box-shadow: 0 0 20px rgba(255, 170, 0, 0.3);
+    border-color: rgba(124, 58, 237, 0.4) !important;
 }
 
 .gesture-state-controlling {
-    border-color: #00ff88 !important;
-    box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
+    border-color: rgba(124, 58, 237, 0.5) !important;
 }
 
 /* Mode-specific gesture feedback */
@@ -200,18 +161,6 @@
     background: radial-gradient(circle, #f093fb 0%, #f5576c 70%, transparent 100%);
 }
 
-/* Hand confidence indicators */
-.confidence-high {
-    background: linear-gradient(90deg, #00ff88, #00cc66) !important;
-}
-
-.confidence-medium {
-    background: linear-gradient(90deg, #ffaa00, #ff8800) !important;
-}
-
-.confidence-low {
-    background: linear-gradient(90deg, #ff4444, #cc3333) !important;
-}
 
 /* Gesture transition effects */
 .gesture-transition {

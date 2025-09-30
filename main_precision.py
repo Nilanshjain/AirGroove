@@ -21,70 +21,7 @@ from web_audio_engine import WebAudioEngine
 from websocket_enhanced import EnhancedWebSocketServer
 import asyncio
 
-class GestureButtonMapper:
-    """Maps quick gestures to button actions."""
-
-    def __init__(self, audio_engine, websocket_server):
-        self.audio_engine = audio_engine
-        self.websocket_server = websocket_server
-
-        # Gesture-to-button mapping
-        self.gesture_mappings = {
-            'pinch': self._handle_pinch_gesture,
-            'pointer': self._handle_pointer_gesture,
-            'two_fingers': self._handle_two_fingers_gesture,
-            'closed_fist': self._handle_fist_gesture
-        }
-
-        # Button action tracking
-        self.last_button_action = 0
-        self.button_cooldown = 0.5  # seconds between button actions
-
-    def handle_quick_gesture(self, hand_side: str, gesture: str, position: tuple):
-        """Handle quick gesture for button activation."""
-        current_time = time.time()
-
-        # Check cooldown
-        if current_time - self.last_button_action < self.button_cooldown:
-            return
-
-        # Get gesture handler
-        if gesture in self.gesture_mappings:
-            self.gesture_mappings[gesture](hand_side, position)
-            self.last_button_action = current_time
-
-            # Send feedback to web interface
-            if self.websocket_server:
-                self.websocket_server.update_system_data({
-                    'quick_gesture': f'{hand_side}_{gesture}',
-                    'button_action': True,
-                    'timestamp': current_time
-                })
-
-    def _handle_pinch_gesture(self, hand_side: str, position: tuple):
-        """Handle pinch gesture - Play/Pause Deck A."""
-        action = 'play_pause'
-        deck = 'a'
-        self.audio_engine.play_deck(deck) if not hasattr(self.audio_engine.deck_a, 'playing') or not self.audio_engine.deck_a.playing else self.audio_engine.pause_deck(deck)
-        print(f"[GestureButton] {hand_side} pinch -> {action} {deck}")
-
-    def _handle_pointer_gesture(self, hand_side: str, position: tuple):
-        """Handle pointer gesture - Play/Pause Deck B."""
-        action = 'play_pause'
-        deck = 'b'
-        self.audio_engine.play_deck(deck) if not hasattr(self.audio_engine.deck_b, 'playing') or not self.audio_engine.deck_b.playing else self.audio_engine.pause_deck(deck)
-        print(f"[GestureButton] {hand_side} pointer -> {action} {deck}")
-
-    def _handle_two_fingers_gesture(self, hand_side: str, position: tuple):
-        """Handle two fingers gesture - Stop both decks."""
-        self.audio_engine.stop_deck('a')
-        self.audio_engine.stop_deck('b')
-        print(f"[GestureButton] {hand_side} two_fingers -> stop all")
-
-    def _handle_fist_gesture(self, hand_side: str, position: tuple):
-        """Handle fist gesture - Master play/pause or mode selection."""
-        # If not hovering over a mode button, treat as master control
-        print(f"[GestureButton] {hand_side} closed_fist -> master control")
+# Quick gestures removed - all interaction through cursor hovering
 
 
 class AirGroovePrecision:
@@ -100,21 +37,6 @@ class AirGroovePrecision:
         # Initialize components
         self.gesture_recognizer = PrecisionGestureRecognizer()
         self.gesture_smoother = GestureSmoother(buffer_size=10, confidence_threshold=0.7)
-
-        # Override the gesture recognizer's quick gesture callback
-        def quick_gesture_callback(hand_side, gesture):
-            if self.gesture_button_mapper:
-                # Get hand position
-                if hand_side == 'left' and self.gesture_recognizer.left_hand:
-                    position = self.gesture_recognizer.left_hand['position']
-                elif hand_side == 'right' and self.gesture_recognizer.right_hand:
-                    position = self.gesture_recognizer.right_hand['position']
-                else:
-                    position = (0.5, 0.5)  # Default center position
-
-                self.gesture_button_mapper.handle_quick_gesture(hand_side, gesture, position)
-
-        self.gesture_recognizer._trigger_quick_gesture = quick_gesture_callback
         self.audio_engine = WebAudioEngine()
         self.websocket_server = None
 
@@ -129,9 +51,6 @@ class AirGroovePrecision:
 
         # Current mode
         self.current_mode = None
-
-        # Gesture button mapper (will be initialized after websocket server)
-        self.gesture_button_mapper = None
 
         print(">> Components initialized")
 
@@ -163,26 +82,26 @@ class AirGroovePrecision:
             time.sleep(1)  # Give server time to start
             print(">> WebSocket server started on ws://localhost:8765")
 
-            # Initialize gesture button mapper
-            print(">> Initializing gesture button mapper...")
-            self.gesture_button_mapper = GestureButtonMapper(self.audio_engine, self.websocket_server)
-            print(">> Gesture button mapper initialized")
-
             # Open web interface
             print(">> Opening web interface...")
             web_path = Path(__file__).parent / 'web' / 'index.html'
             webbrowser.open(f'file://{web_path.absolute()}')
             print(">> Web interface opened")
 
+            # Load demo tracks automatically
+            print(">> Loading demo tracks...")
+            self._load_demo_track('a')
+            self._load_demo_track('b')
+
             # Start main processing loop
             print(">> Starting gesture recognition...")
             print()
             print("Controls:")
-            print("- Open palms: Browse mode")
-            print("- Fist on button: Select mode")
-            print("- One fist + gesture: Control audio")
+            print("- Move hand: Control cursor")
+            print("- Fist on element: Select/activate")
             print("- Q: Quit application")
-            print("- SPACE: Play/Pause (backup)")
+            print("- SPACE: Play/Pause Deck A")
+            print("- O: Load demo track")
             print()
             print("Ready! Make gestures in front of the camera.")
             print("=" * 60)
@@ -247,9 +166,14 @@ class AirGroovePrecision:
                     break
                 elif key == ord(' '):
                     print("[App] Space - Play/Pause deck A")
-                    self.audio_engine.play_deck('a')
+                    if hasattr(self.audio_engine.deck_a, 'playing') and self.audio_engine.deck_a.playing:
+                        self.audio_engine.pause_deck('a')
+                    else:
+                        self.audio_engine.play_deck('a')
                 elif key == ord('o'):
-                    self._load_demo_track()
+                    self._load_demo_track('a')
+                elif key == ord('p'):
+                    self._load_demo_track('b')
 
                 # Update FPS
                 self._update_fps()
@@ -394,20 +318,33 @@ class AirGroovePrecision:
                     'current_mode': self.current_mode
                 })
 
-    def _load_demo_track(self):
+    def _load_demo_track(self, deck='a'):
         """Load a demo track for testing."""
         demo_files = [
             'audio/Ainozama.mp3',
-            'audio/pianos-by-jtwayne-7-174717.mp3'
+            'audio/pianos-by-jtwayne-7-174717.mp3',
+            'C:/Windows/Media/Alarm01.wav',  # Windows system sound
+            'C:/Windows/Media/Ring01.wav'
         ]
 
         for demo_file in demo_files:
             if os.path.exists(demo_file):
-                self.audio_engine.load_track('a', demo_file)
-                print(f"[Demo] Loaded: {demo_file}")
+                self.audio_engine.load_track(deck, demo_file)
+                print(f"[Demo] Loaded: {demo_file} to deck {deck}")
+
+                # Send track info to frontend
+                if self.websocket_server:
+                    track_name = os.path.basename(demo_file)
+                    self.websocket_server.update_audio_data({
+                        f'deck_{deck}': {
+                            'track_name': track_name,
+                            'artist': 'Demo Track',
+                            'loaded': True
+                        }
+                    })
                 return
 
-        print("[Demo] No demo files found")
+        print(f"[Demo] No demo files found for deck {deck}")
 
     # WebSocket event handlers
     def _on_mode_selected(self, mode):
@@ -429,10 +366,32 @@ class AirGroovePrecision:
         elif action == 'play_pause':
             # Toggle play/pause
             if deck == 'a':
-                if self.audio_engine.deck_a.playing:
+                if hasattr(self.audio_engine.deck_a, 'playing') and self.audio_engine.deck_a.playing:
                     self.audio_engine.pause_deck(deck)
                 else:
                     self.audio_engine.play_deck(deck)
+            elif deck == 'b':
+                if hasattr(self.audio_engine.deck_b, 'playing') and self.audio_engine.deck_b.playing:
+                    self.audio_engine.pause_deck(deck)
+                else:
+                    self.audio_engine.play_deck(deck)
+        elif action == 'sync':
+            # Sync deck to other deck's BPM
+            print(f"[Audio] Sync requested for deck {deck}")
+            # Note: Implement BPM sync in audio engine if needed
+            self.audio_engine.sync_deck(deck) if hasattr(self.audio_engine, 'sync_deck') else None
+        elif action == 'load_track':
+            # Load track from file path
+            file_path = parameters.get('file_path', '')
+            file_name = parameters.get('file_name', '')
+            print(f"[Audio] Load track request for deck {deck}: {file_name}")
+
+            # For now, show that load was received
+            # In production, you'd handle file upload or local file selection
+            if file_path and os.path.exists(file_path):
+                self.audio_engine.load_track(deck, file_path)
+            else:
+                print(f"[Audio] File not found: {file_path}")
         elif action == 'fx_control':
             # Handle FX parameter control
             parameter = parameters.get('parameter')

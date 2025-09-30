@@ -1,6 +1,25 @@
-numpy
-sounddevice
-soundfile
-librosa
-opencv-python
-mediapipe 
+# AirGroove DJ - Requirements
+# Gesture-controlled DJ interface using computer vision
+
+# Computer Vision & Machine Learning
+opencv-python==4.9.0.80
+mediapipe==0.10.21
+
+# Audio Processing
+sounddevice==0.5.2
+soundfile==0.13.1
+librosa==0.11.0
+audioread==3.0.1
+
+# Web Framework & Communication
+Flask==2.3.3
+Flask-Cors==4.0.0
+websockets==15.0.1
+
+# Scientific Computing
+numpy==1.26.4
+scipy==1.15.2
+
+# Utilities
+Pillow==10.2.0
+matplotlib==3.7.2

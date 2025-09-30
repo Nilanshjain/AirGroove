@@ -7,9 +7,9 @@ No trained models - pure rule-based detection for maximum accuracy and customiza
 import cv2
 import numpy as np
 import mediapipe as mp
-from typing import Dict, List, Optional, Tuple
-import math
 import time
+import math
+from typing import Dict, List, Optional, Tuple
 
 class PrecisionGestureRecognizer:
     """Ultra-precise gesture recognition using geometric analysis of hand landmarks."""
@@ -19,13 +19,13 @@ class PrecisionGestureRecognizer:
         self.mp_hands = mp.solutions.hands
         self.mp_drawing = mp.solutions.drawing_utils
 
-        # Initialize MediaPipe Hands with high precision settings
+        # Initialize MediaPipe Hands with optimized settings for better detection
         self.hands = self.mp_hands.Hands(
             static_image_mode=False,
             max_num_hands=2,  # Track both hands
             model_complexity=1,
-            min_detection_confidence=0.8,
-            min_tracking_confidence=0.7
+            min_detection_confidence=0.7,  # Lowered for better single hand detection
+            min_tracking_confidence=0.5    # Lowered for smoother tracking
         )
 
         # Gesture detection thresholds (fine-tuned for accuracy)
@@ -38,6 +38,18 @@ class PrecisionGestureRecognizer:
         self.right_hand = None
         self.left_gesture = "none"
         self.right_gesture = "none"
+
+        # Swipe detection
+        self.swipe_history = {
+            'left': {'positions': [], 'last_time': 0, 'last_swipe': None, 'swipe_time': 0},
+            'right': {'positions': [], 'last_time': 0, 'last_swipe': None, 'swipe_time': 0}
+        }
+        self.SWIPE_THRESHOLD = 0.2  # Base threshold for swipe (good for single hand)
+        self.SWIPE_TIME_WINDOW = 0.4  # Time window for swipe detection
+        self.SWIPE_EVENT_DURATION = 0.3  # How long swipe event is active
+
+        # Hand swap correction (toggle if hands appear reversed)
+        self.SWAP_HANDS = False  # Set to True if hands appear reversed
 
         # Gesture timing for quick actions
         self.gesture_history = {
@@ -67,7 +79,17 @@ class PrecisionGestureRecognizer:
                 hand_side = "unknown"
                 if i < len(results.multi_handedness):
                     label = results.multi_handedness[i].classification[0].label
-                    hand_side = "left" if label == "Left" else "right"
+
+                    if self.SWAP_HANDS:
+                        # Swap: MediaPipe's "Left" is user's right hand (camera perspective)
+                        hand_side = "right" if label == "Left" else "left"
+                    else:
+                        # Use MediaPipe's labels directly
+                        hand_side = "left" if label == "Left" else "right"
+
+                    # Debug output occasionally
+                    if np.random.random() < 0.02:  # 2% chance
+                        print(f"[Hand Detection] MediaPipe: {label} → User: {hand_side}")
 
                 # Extract normalized landmarks
                 landmarks = self._extract_landmarks(hand_landmarks)
@@ -87,10 +109,12 @@ class PrecisionGestureRecognizer:
                     self.left_hand = hand_data
                     self.left_gesture = gesture
                     self._update_gesture_timing('left', gesture)
+                    self._track_swipe('left', hand_data['position'], gesture)
                 elif hand_side == "right":
                     self.right_hand = hand_data
                     self.right_gesture = gesture
                     self._update_gesture_timing('right', gesture)
+                    self._track_swipe('right', hand_data['position'], gesture)
 
         return self._get_current_state()
 
@@ -261,9 +285,85 @@ class PrecisionGestureRecognizer:
         # Use wrist as center point
         return landmarks[0]
 
+    def _track_swipe(self, hand: str, position: Tuple[float, float], gesture: str):
+        """Track hand position for swipe detection."""
+        current_time = time.time()
+        swipe_data = self.swipe_history[hand]
+
+        # Only track swipes with open palm
+        if gesture != 'open_palm':
+            swipe_data['positions'] = []
+            swipe_data['last_time'] = current_time
+            return
+
+        # Clear old positions if too much time has passed
+        if current_time - swipe_data['last_time'] > self.SWIPE_TIME_WINDOW:
+            swipe_data['positions'] = []
+
+        # Add current position
+        swipe_data['positions'].append((position[0], current_time))
+        swipe_data['last_time'] = current_time
+
+        # Keep only recent positions
+        swipe_data['positions'] = [
+            (x, t) for x, t in swipe_data['positions']
+            if current_time - t < self.SWIPE_TIME_WINDOW
+        ]
+
+        # Detect swipe if we have enough positions
+        if len(swipe_data['positions']) >= 3:
+            # Check if both hands are detected for sensitivity adjustment
+            both_hands_detected = self.left_hand is not None and self.right_hand is not None
+
+            # Use different threshold based on hand count
+            # Single hand: easier swipe (lower threshold)
+            # Two hands: harder swipe (higher threshold) to avoid accidental triggers
+            threshold = self.SWIPE_THRESHOLD * 2.0 if both_hands_detected else self.SWIPE_THRESHOLD
+
+            swipe_direction = self._detect_swipe_with_threshold(swipe_data['positions'], threshold)
+            if swipe_direction:
+                print(f"[Swipe] {hand} hand swipe {swipe_direction} (threshold: {threshold:.2f})")
+                # Store swipe event
+                swipe_data['last_swipe'] = swipe_direction
+                swipe_data['swipe_time'] = current_time
+                # Clear positions after successful swipe
+                swipe_data['positions'] = []
+
+    def _detect_swipe(self, positions: List[Tuple[float, float]]) -> Optional[str]:
+        """Detect swipe direction from position history (uses default threshold)."""
+        return self._detect_swipe_with_threshold(positions, self.SWIPE_THRESHOLD)
+
+    def _detect_swipe_with_threshold(self, positions: List[Tuple[float, float]], threshold: float) -> Optional[str]:
+        """Detect swipe direction with custom threshold."""
+        if len(positions) < 3:
+            return None
+
+        # Calculate total horizontal movement
+        start_x = positions[0][0]
+        end_x = positions[-1][0]
+        distance = end_x - start_x
+
+        # Also check for consistency in direction (reduce false positives)
+        mid_x = positions[len(positions)//2][0]
+        consistent_direction = (
+            (mid_x > start_x and end_x > mid_x) or  # Consistently moving right
+            (mid_x < start_x and end_x < mid_x)     # Consistently moving left
+        )
+
+        # Check if movement is significant and consistent
+        if abs(distance) > threshold and consistent_direction:
+            return "right" if distance > 0 else "left"
+
+        return None
+
     def _get_current_state(self) -> Dict:
         """Get current state of both hands and gestures."""
         timing_info = self.get_gesture_timing_info()
+
+        # Check for recent swipes
+        left_swipe = self._get_recent_swipe('left')
+        right_swipe = self._get_recent_swipe('right')
+
         return {
             'left_hand': {
                 'detected': self.left_hand is not None,
@@ -271,7 +371,8 @@ class PrecisionGestureRecognizer:
                 'position': self.left_hand['position'] if self.left_hand else (0, 0),
                 'confidence': self.left_hand['confidence'] if self.left_hand else 0.0,
                 'duration': timing_info['left']['duration'],
-                'is_quick': timing_info['left']['is_quick']
+                'is_quick': timing_info['left']['is_quick'],
+                'swipe': left_swipe
             },
             'right_hand': {
                 'detected': self.right_hand is not None,
@@ -279,11 +380,23 @@ class PrecisionGestureRecognizer:
                 'position': self.right_hand['position'] if self.right_hand else (0, 0),
                 'confidence': self.right_hand['confidence'] if self.right_hand else 0.0,
                 'duration': timing_info['right']['duration'],
-                'is_quick': timing_info['right']['is_quick']
+                'is_quick': timing_info['right']['is_quick'],
+                'swipe': right_swipe
             },
             'interaction_state': self._determine_interaction_state(),
             'timing_info': timing_info
         }
+
+    def _get_recent_swipe(self, hand: str) -> Optional[str]:
+        """Check if a swipe was detected recently."""
+        swipe_data = self.swipe_history[hand]
+        current_time = time.time()
+
+        # Check if swipe is still active (within event duration)
+        if swipe_data['last_swipe'] and current_time - swipe_data['swipe_time'] < self.SWIPE_EVENT_DURATION:
+            return swipe_data['last_swipe']
+
+        return None
 
     def _determine_interaction_state(self) -> str:
         """Determine the current interaction state based on both hands."""

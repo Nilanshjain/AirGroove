@@ -1,581 +1,588 @@
 /**
- * Gesture-based UI interaction system
- * Handles gesture pointer, hover detection, and mode selection
+ * Gesture-based control system (no cursor)
+ * Direct gesture mapping for DJ interface control
  */
 
 class GestureUI {
     constructor() {
-        this.gesturePointer = document.getElementById('gesture-pointer');
-        console.log('GestureUI initialized, pointer element:', this.gesturePointer);
+        // Mode management
+        this.modes = ['fx', 'loop', 'scratch'];
+        this.currentModeIndex = 0;
         this.currentMode = null;
-        this.isSelecting = false;
-        this.hoverTimeout = null;
-        this.selectionTimeout = null;
 
-        // UI elements
-        this.modeButtons = document.querySelectorAll('.mode-btn');
-        this.currentModeDisplay = document.getElementById('current-mode');
+        // Swipe detection
+        this.swipeStartX = null;
+        this.swipeThreshold = 0.3; // 30% of normalized space
+        this.lastSwipeTime = 0;
+        this.swipeCooldown = 800; // ms
 
-        // Gesture state
+        // Gesture state tracking
         this.leftGesture = 'none';
         this.rightGesture = 'none';
-        this.interactionState = 'browsing';
+        this.previousLeftGesture = 'none';
+        this.previousRightGesture = 'none';
         this.leftPosition = { x: 0, y: 0 };
         this.rightPosition = { x: 0, y: 0 };
 
-        // Make mode buttons hoverable
-        this.modeButtons.forEach(btn => {
-            btn.classList.add('hoverable');
-        });
+        // Action cooldowns
+        this.lastActionTime = {};
+        this.actionCooldown = 600; // ms
 
-        // Make gesture buttons hoverable
-        this.gestureButtons = document.querySelectorAll('.gesture-button');
-        this.gestureButtons.forEach(btn => {
-            btn.classList.add('hoverable');
-        });
+        // UI elements
+        this.modeButtons = document.querySelectorAll('.mode-btn');
+        this.leftGestureDisplay = document.getElementById('left-gesture');
+        this.rightGestureDisplay = document.getElementById('right-gesture');
+        this.interactionStateDisplay = document.getElementById('interaction-state');
 
-        this.setupEventListeners();
+        this.init();
     }
 
-    setupEventListeners() {
-        // Handle window resize for coordinate mapping
-        window.addEventListener('resize', () => {
-            this.updatePointerPosition();
-        });
+    init() {
+        console.log('[GestureUI] Initialized - Direct gesture control mode');
+        this.updateGestureMapping();
     }
 
     updateGestureState(gestureData) {
-        // Update gesture data
+        // Store previous gestures
+        this.previousLeftGesture = this.leftGesture;
+        this.previousRightGesture = this.rightGesture;
+
+        // Update current gestures
         this.leftGesture = gestureData.left_hand.gesture;
         this.rightGesture = gestureData.right_hand.gesture;
-        this.interactionState = gestureData.interaction_state;
-        this.leftPosition = gestureData.left_hand.position;
-        this.rightPosition = gestureData.right_hand.position;
 
-        // Update UI displays
+        // Update hand detection status
+        this.leftDetected = gestureData.left_hand.detected;
+        this.rightDetected = gestureData.right_hand.detected;
+
+        // Update positions
+        this.updateHandPosition('left', gestureData.left_hand.position);
+        this.updateHandPosition('right', gestureData.right_hand.position);
+
+        // Update displays
         this.updateGestureDisplays(gestureData);
-        this.updatePointerPosition();
-        this.handleInteractionState();
+
+        // Check for backend-detected swipes
+        if (gestureData.left_hand.swipe) {
+            this.handleSwipeEvent('left', gestureData.left_hand.swipe);
+        }
+        if (gestureData.right_hand.swipe) {
+            this.handleSwipeEvent('right', gestureData.right_hand.swipe);
+        }
+
+        // Process gestures
+        this.processGestures();
     }
 
-    updateGestureDisplays(gestureData) {
-        // Update left hand display
-        const leftGestureEl = document.getElementById('left-gesture');
-        const leftConfidenceEl = document.getElementById('left-confidence');
+    handleSwipeEvent(hand, direction) {
+        const currentTime = Date.now();
 
-        if (leftGestureEl) {
-            leftGestureEl.textContent = this.leftGesture;
-            leftGestureEl.className = `gesture-display gesture-${this.leftGesture}`;
-        }
-
-        if (leftConfidenceEl) {
-            const confidence = gestureData.left_hand.confidence * 100;
-            leftConfidenceEl.style.width = `${confidence}%`;
-            leftConfidenceEl.className = `confidence-fill ${this.getConfidenceClass(confidence)}`;
-        }
-
-        // Update right hand display
-        const rightGestureEl = document.getElementById('right-gesture');
-        const rightConfidenceEl = document.getElementById('right-confidence');
-
-        if (rightGestureEl) {
-            rightGestureEl.textContent = this.rightGesture;
-            rightGestureEl.className = `gesture-display gesture-${this.rightGesture}`;
-        }
-
-        if (rightConfidenceEl) {
-            const confidence = gestureData.right_hand.confidence * 100;
-            rightConfidenceEl.style.width = `${confidence}%`;
-            rightConfidenceEl.className = `confidence-fill ${this.getConfidenceClass(confidence)}`;
-        }
-
-        // Update interaction state
-        const interactionEl = document.getElementById('interaction-state');
-        if (interactionEl) {
-            interactionEl.textContent = this.interactionState.replace(/_/g, ' ');
-            interactionEl.className = `interaction-state gesture-state-${this.getStateClass()}`;
-        }
-    }
-
-    getConfidenceClass(confidence) {
-        if (confidence >= 80) return 'confidence-high';
-        if (confidence >= 50) return 'confidence-medium';
-        return 'confidence-low';
-    }
-
-    getStateClass() {
-        if (this.interactionState === 'browsing') return 'browsing';
-        if (this.interactionState.includes('selecting')) return 'selecting';
-        if (this.interactionState.includes('controlling')) return 'controlling';
-        return 'unknown';
-    }
-
-    updatePointerPosition() {
-        if (!this.gesturePointer) {
-            console.warn('Gesture pointer element not found!');
+        // Check cooldown
+        if (currentTime - this.lastSwipeTime < this.swipeCooldown) {
             return;
         }
 
-        let activePosition;
-        let activeGesture;
+        this.lastSwipeTime = currentTime;
+        console.log(`[Swipe Event] ${hand} hand swipe ${direction}`);
 
-        // Show cursor for ANY detected hand - prioritize right hand, then left
-        // Use hand position data regardless of gesture type
-        if (this.rightPosition && this.rightPosition.x >= 0 && this.rightPosition.y >= 0) {
-            activePosition = this.rightPosition;
-            activeGesture = this.rightGesture;
-        } else if (this.leftPosition && this.leftPosition.x >= 0 && this.leftPosition.y >= 0) {
-            activePosition = this.leftPosition;
-            activeGesture = this.leftGesture;
-        }
+        // Show swipe visual feedback
+        this.showSwipeFeedback(direction);
 
-        // Default to open_palm for any unknown or none gestures
-        if (activeGesture === 'none' || !activeGesture || activeGesture === 'unknown') {
-            activeGesture = 'open_palm';
-        }
-
-        console.log('Cursor Debug:', {
-            leftGesture: this.leftGesture,
-            rightGesture: this.rightGesture,
-            leftPosition: this.leftPosition,
-            rightPosition: this.rightPosition,
-            activePosition: activePosition,
-            activeGesture: activeGesture
-        });
-
-        if (activePosition && activePosition.x >= 0 && activePosition.y >= 0) {
-            // Convert normalized coordinates to screen coordinates
-            const x = activePosition.x * window.innerWidth;
-            const y = activePosition.y * window.innerHeight;
-
-            console.log('Setting cursor position:', { x, y, gesture: activeGesture });
-
-            this.gesturePointer.style.left = `${x}px`;
-            this.gesturePointer.style.top = `${y}px`;
-            // Apply gesture class for cursor styling - always show as active
-            this.gesturePointer.className = `gesture-pointer active ${activeGesture}`;
-
-            // Check for hover over UI elements
-            this.checkHoverElements(x, y);
-        } else {
-            console.log('No active position, hiding cursor');
-            this.gesturePointer.classList.remove('active');
-            this.clearAllHovers();
+        // Cycle modes based on swipe direction
+        if (direction === 'right') {
+            this.cycleMode('next');
+        } else if (direction === 'left') {
+            this.cycleMode('previous');
         }
     }
 
-    checkHoverElements(x, y) {
-        // Get element at pointer position
-        const element = document.elementFromPoint(x, y);
+    showSwipeFeedback(direction) {
+        // Create swipe indicator
+        const swipeIndicator = document.createElement('div');
+        swipeIndicator.className = 'swipe-indicator';
+        swipeIndicator.innerHTML = direction === 'right' ? '→' : '←';
 
-        if (element) {
-            // Check if it's a hoverable element
-            const hoverable = element.closest('.hoverable');
+        swipeIndicator.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 72px;
+            color: rgba(124, 58, 237, 0.9);
+            font-weight: bold;
+            z-index: 10000;
+            animation: swipeAnimation 0.5s ease;
+            pointer-events: none;
+        `;
 
-            if (hoverable) {
-                this.handleHover(hoverable);
+        document.body.appendChild(swipeIndicator);
+
+        setTimeout(() => {
+            swipeIndicator.remove();
+        }, 500);
+    }
+
+    updateHandPosition(hand, position) {
+        if (Array.isArray(position) && position.length >= 2) {
+            if (hand === 'left') {
+                this.leftPosition = { x: position[0], y: position[1] };
             } else {
-                this.clearAllHovers();
+                this.rightPosition = { x: position[0], y: position[1] };
+            }
+        } else if (position && typeof position.x !== 'undefined') {
+            if (hand === 'left') {
+                this.leftPosition = position;
+            } else {
+                this.rightPosition = position;
             }
         }
     }
 
-    handleHover(element) {
-        // Clear previous hovers
-        this.clearAllHovers();
+    // Removed frontend swipe detection - now handled by backend
 
-        // Add hover class
-        element.classList.add('hovered');
-
-        // Handle mode button hover
-        if (element.classList.contains('mode-btn')) {
-            this.handleModeButtonHover(element);
-        }
-
-        // Handle gesture button hover
-        if (element.classList.contains('gesture-button')) {
-            this.handleGestureButtonHover(element);
-        }
-    }
-
-    handleModeButtonHover(button) {
-        const mode = button.dataset.mode;
-
-        // If user makes a fist while hovering, select the mode
-        if (this.leftGesture === 'closed_fist' || this.rightGesture === 'closed_fist') {
-            this.selectMode(mode, button);
-        }
-    }
-
-    handleGestureButtonHover(button) {
-        const requiredGesture = button.dataset.gesture;
-        const action = button.dataset.action;
-        const deck = button.dataset.deck;
-
-        // Show visual feedback for the expected gesture
-        button.classList.add('gesture-ready');
-
-        // Check if the user is making the correct gesture
-        if (this.leftGesture === requiredGesture || this.rightGesture === requiredGesture) {
-            button.classList.add('gesture-match');
-
-            // Send quick gesture feedback
-            this.showQuickGestureFeedback(`${requiredGesture} detected over ${action} ${deck}`, 'success');
+    cycleMode(direction) {
+        if (direction === 'next') {
+            this.currentModeIndex = (this.currentModeIndex + 1) % this.modes.length;
         } else {
-            button.classList.remove('gesture-match');
+            this.currentModeIndex = (this.currentModeIndex - 1 + this.modes.length) % this.modes.length;
+        }
+
+        const newMode = this.modes[this.currentModeIndex];
+        const button = document.getElementById(`mode-${newMode}`);
+
+        if (button) {
+            this.selectMode(newMode, button);
         }
     }
 
-    showQuickGestureFeedback(message, type = 'info') {
-        const feedbackEl = document.getElementById('quick-gesture-feedback');
-        if (feedbackEl) {
-            feedbackEl.textContent = message;
-            feedbackEl.className = `quick-gesture-feedback ${type}`;
+    processGestures() {
+        // Use the backend's detection status for better accuracy
+        const leftDetected = this.leftDetected && this.leftGesture !== 'none';
+        const rightDetected = this.rightDetected && this.rightGesture !== 'none';
 
-            // Clear after 2 seconds
-            setTimeout(() => {
-                feedbackEl.textContent = '';
-                feedbackEl.className = 'quick-gesture-feedback';
-            }, 2000);
+        // Debug hand detection
+        if (Math.random() < 0.02) {  // 2% chance
+            console.log(`[Hand Status] Left: ${leftDetected ? this.leftGesture : 'not detected'}, Right: ${rightDetected ? this.rightGesture : 'not detected'}`);
+        }
+
+        // Both hands detected
+        if (leftDetected && rightDetected) {
+            this.processTwoHandGestures();
+        }
+        // Only left hand detected
+        else if (leftDetected && !rightDetected) {
+            this.processSingleHandGesture('left');
+        }
+        // Only right hand detected
+        else if (!leftDetected && rightDetected) {
+            this.processSingleHandGesture('right');
+        }
+
+        // Update interaction state display
+        this.updateInteractionState();
+    }
+
+    processTwoHandGestures() {
+        // Both hands open = neutral/browsing state
+        if (this.leftGesture === 'open_palm' && this.rightGesture === 'open_palm') {
+            // No action - just browsing
+            return;
+        }
+
+        // Left fist + Right gesture combinations
+        if (this.leftGesture === 'closed_fist') {
+            if (this.rightGesture === 'pinch') {
+                this.triggerAction('fx_filter', this.rightPosition);
+            } else if (this.rightGesture === 'pointer') {
+                this.triggerAction('fx_mix', this.rightPosition);
+            } else if (this.rightGesture === 'two_fingers') {
+                this.triggerAction('stop_all');
+            }
+        }
+
+        // Right fist + Left gesture combinations
+        if (this.rightGesture === 'closed_fist') {
+            if (this.leftGesture === 'pinch') {
+                this.triggerAction('loop_length', this.leftPosition);
+            } else if (this.leftGesture === 'pointer') {
+                this.triggerAction('loop_position', this.leftPosition);
+            } else if (this.leftGesture === 'two_fingers') {
+                this.triggerAction('stop_all');
+            }
+        }
+
+        // Special combinations
+        if (this.leftGesture === 'pinch' && this.rightGesture === 'pinch') {
+            this.triggerAction('crossfader', {
+                x: (this.leftPosition.x + this.rightPosition.x) / 2,
+                y: (this.leftPosition.y + this.rightPosition.y) / 2
+            });
+        }
+    }
+
+    processSingleHandGesture(hand) {
+        const gesture = hand === 'left' ? this.leftGesture : this.rightGesture;
+        const position = hand === 'left' ? this.leftPosition : this.rightPosition;
+
+        // Map hands to decks: left hand -> Deck A, right hand -> Deck B
+        const deck = hand === 'left' ? 'a' : 'b';
+
+        console.log(`[Single Hand] ${hand} hand (${gesture}) controlling Deck ${deck.toUpperCase()}`);
+
+        // Closed fist = play/pause for corresponding deck
+        if (gesture === 'closed_fist') {
+            if (this.gestureJustChanged(hand, 'closed_fist')) {
+                console.log(`[Action] ${hand} hand fist -> Play/Pause Deck ${deck.toUpperCase()}`);
+                this.triggerAction('play_pause', { deck: deck });
+            }
+        }
+
+        // Pinch = Load track for deck
+        else if (gesture === 'pinch') {
+            if (this.gestureJustChanged(hand, 'pinch')) {
+                console.log(`[Action] ${hand} hand pinch -> Load Track to Deck ${deck.toUpperCase()}`);
+                this.triggerAction('load_track', { deck: deck });
+            }
+        }
+
+        // Pointer = Cue/Sync
+        else if (gesture === 'pointer') {
+            if (this.gestureJustChanged(hand, 'pointer')) {
+                console.log(`[Action] ${hand} hand pointer -> Sync Deck ${deck.toUpperCase()}`);
+                this.triggerAction('sync', { deck: deck });
+            }
+        }
+
+        // Two fingers = Stop deck
+        else if (gesture === 'two_fingers') {
+            if (this.gestureJustChanged(hand, 'two_fingers')) {
+                console.log(`[Action] ${hand} hand two fingers -> Stop Deck ${deck.toUpperCase()}`);
+                this.triggerAction('stop', { deck: deck });
+            }
+        }
+
+        // Open palm with current mode active = mode control
+        else if (gesture === 'open_palm' && this.currentMode) {
+            this.applyModeControl(hand, position);
+        }
+    }
+
+    gestureJustChanged(hand, targetGesture) {
+        const current = hand === 'left' ? this.leftGesture : this.rightGesture;
+        const previous = hand === 'left' ? this.previousLeftGesture : this.previousRightGesture;
+
+        return current === targetGesture && previous !== targetGesture;
+    }
+
+    triggerAction(action, params = {}) {
+        const currentTime = Date.now();
+
+        // Check cooldown
+        if (this.lastActionTime[action] &&
+            currentTime - this.lastActionTime[action] < this.actionCooldown) {
+            return;
+        }
+
+        this.lastActionTime[action] = currentTime;
+
+        console.log(`[GestureUI] Action: ${action}`, params);
+
+        // Send action to backend
+        if (window.wsClient) {
+            switch(action) {
+                case 'play_pause':
+                case 'stop':
+                case 'sync':
+                    window.wsClient.sendAudioControl(action, params);
+                    this.showActionFeedback(action, params.deck);
+                    break;
+
+                case 'load_track':
+                    // Load demo track based on deck
+                    const demoTracks = [
+                        { path: 'audio/Ainozama.mp3', name: 'Ainozama' },
+                        { path: 'audio/pianos-by-jtwayne-7-174717.mp3', name: 'Pianos' }
+                    ];
+                    const track = demoTracks[params.deck === 'a' ? 0 : 1];
+
+                    window.wsClient.sendAudioControl('load_track', {
+                        deck: params.deck,
+                        file_path: track.path,
+                        file_name: track.name
+                    });
+
+                    // Update UI
+                    const trackTitle = document.querySelector(`#track-info-${params.deck} .track-title`);
+                    const trackArtist = document.querySelector(`#track-info-${params.deck} .track-artist`);
+                    if (trackTitle) trackTitle.textContent = track.name;
+                    if (trackArtist) trackArtist.textContent = 'Demo Track';
+
+                    this.showActionFeedback(`Load: ${track.name}`, params.deck);
+                    break;
+
+                case 'stop_all':
+                    window.wsClient.sendAudioControl('stop', { deck: 'a' });
+                    window.wsClient.sendAudioControl('stop', { deck: 'b' });
+                    this.showActionFeedback('Stop All Decks');
+                    break;
+
+                case 'crossfader':
+                    window.wsClient.sendAudioControl('crossfader', { position: params.x });
+                    break;
+
+                case 'fx_filter':
+                case 'fx_mix':
+                    if (this.currentMode === 'fx') {
+                        const parameter = action.replace('fx_', '');
+                        window.wsClient.sendAudioControl('fx_control', {
+                            parameter: parameter,
+                            value: params.y
+                        });
+                    }
+                    break;
+
+                case 'loop_length':
+                case 'loop_position':
+                    if (this.currentMode === 'loop') {
+                        const parameter = action.replace('loop_', '');
+                        window.wsClient.sendAudioControl('loop_control', {
+                            parameter: parameter,
+                            value: params.x
+                        });
+                    }
+                    break;
+            }
+        }
+    }
+
+    applyModeControl(hand, position) {
+        if (!this.currentMode) return;
+
+        // Apply continuous control based on hand position
+        if (this.currentMode === 'fx') {
+            window.wsClient?.sendAudioControl('fx_control', {
+                parameter: hand === 'left' ? 'filter' : 'mix',
+                value: position.y
+            });
+        } else if (this.currentMode === 'loop') {
+            window.wsClient?.sendAudioControl('loop_control', {
+                parameter: 'position',
+                value: position.x
+            });
+        } else if (this.currentMode === 'scratch') {
+            const centerX = 0.5;
+            const scratchSpeed = (position.x - centerX) * 2; // -1 to 1
+            window.wsClient?.sendAudioControl('scratch_control', {
+                parameter: 'speed',
+                value: scratchSpeed
+            });
         }
     }
 
     selectMode(mode, button) {
-        if (this.currentMode === mode) return;
-
         // Clear previous selection
-        this.modeButtons.forEach(btn => {
-            btn.classList.remove('active');
-        });
+        this.modeButtons.forEach(btn => btn.classList.remove('active'));
 
         // Activate new mode
         button.classList.add('active');
-        button.classList.add('selecting-feedback');
-
-        // Remove feedback class after animation
-        setTimeout(() => {
-            button.classList.remove('selecting-feedback');
-        }, 800);
-
         this.currentMode = mode;
 
+        // Update mode index
+        this.currentModeIndex = this.modes.indexOf(mode);
+
         // Update display
-        if (this.currentModeDisplay) {
-            this.currentModeDisplay.textContent = this.getModeDisplayName(mode);
-        }
-
-        // Update body class for mode-specific styling
-        document.body.className = `mode-${mode}-active`;
-
-        // Send mode selection to backend
-        if (window.wsClient) {
-            window.wsClient.sendModeSelection(mode);
-        }
-
-        // Update mode controls
         this.updateModeControls(mode);
 
-        console.log(`Mode selected: ${mode}`);
-    }
+        // Send to backend
+        window.wsClient?.sendModeSelection(mode);
 
-    getModeDisplayName(mode) {
-        const names = {
-            'fx': 'Control FX',
-            'loop': 'Loop',
-            'scratch': 'Scratch'
-        };
-        return names[mode] || mode;
+        // Visual feedback
+        this.showActionFeedback(`Mode: ${mode.toUpperCase()}`);
+
+        console.log(`[GestureUI] Mode selected: ${mode}`);
     }
 
     updateModeControls(mode) {
         const modeControlsEl = document.getElementById('mode-controls');
         if (!modeControlsEl) return;
 
-        // Clear existing controls
-        modeControlsEl.innerHTML = '';
+        const modeDescriptions = {
+            'fx': `
+                <div class="mode-info">
+                    <h4>FX Mode Active</h4>
+                    <p>Left Fist + Right Pinch: Filter</p>
+                    <p>Left Fist + Right Pointer: Mix</p>
+                    <p>Open Palm: Y-axis control</p>
+                </div>
+            `,
+            'loop': `
+                <div class="mode-info">
+                    <h4>Loop Mode Active</h4>
+                    <p>Right Fist + Left Pinch: Length</p>
+                    <p>Right Fist + Left Pointer: Position</p>
+                    <p>Open Palm: X-axis control</p>
+                </div>
+            `,
+            'scratch': `
+                <div class="mode-info">
+                    <h4>Scratch Mode Active</h4>
+                    <p>Open Palm: Scratch speed</p>
+                    <p>Hand position controls speed</p>
+                </div>
+            `
+        };
 
-        // Add mode-specific controls
-        switch (mode) {
-            case 'fx':
-                this.createFXControls(modeControlsEl);
-                break;
-            case 'loop':
-                this.createLoopControls(modeControlsEl);
-                break;
-            case 'scratch':
-                this.createScratchControls(modeControlsEl);
-                break;
+        modeControlsEl.innerHTML = modeDescriptions[mode] || '<p>No mode selected</p>';
+    }
+
+    updateGestureDisplays(gestureData) {
+        // Update gesture emoji displays
+        const gestureEmojis = {
+            'open_palm': '✋',
+            'closed_fist': '✊',
+            'pinch': '👌',
+            'pointer': '👉',
+            'two_fingers': '✌️',
+            'none': '—'
+        };
+
+        if (this.leftGestureDisplay) {
+            this.leftGestureDisplay.textContent = gestureEmojis[this.leftGesture] || '?';
+        }
+
+        if (this.rightGestureDisplay) {
+            this.rightGestureDisplay.textContent = gestureEmojis[this.rightGesture] || '?';
         }
     }
 
-    createFXControls(container) {
-        container.innerHTML = `
-            <div class="fx-controls">
-                <h3>Control FX</h3>
-                <div class="fx-parameter">
-                    <label>Filter</label>
-                    <div class="parameter-control" id="fx-filter">
-                        <div class="parameter-value" id="fx-filter-value">50%</div>
-                    </div>
-                </div>
-                <div class="fx-parameter">
-                    <label>Reverb</label>
-                    <div class="parameter-control" id="fx-reverb">
-                        <div class="parameter-value" id="fx-reverb-value">0%</div>
-                    </div>
-                </div>
-                <div class="fx-parameter">
-                    <label>Delay</label>
-                    <div class="parameter-control" id="fx-delay">
-                        <div class="parameter-value" id="fx-delay-value">0%</div>
-                    </div>
-                </div>
-                <div class="gesture-instructions">
-                    <p>🤏 Pinch: Filter Control</p>
-                    <p>👉 Point: Effect Mix</p>
-                    <p>✌️ Two Fingers: Reverb + Delay</p>
-                </div>
-            </div>
+    updateInteractionState() {
+        if (!this.interactionStateDisplay) return;
+
+        let state = 'ready';
+
+        // Determine state based on gestures
+        if (this.leftGesture === 'open_palm' && this.rightGesture === 'open_palm') {
+            state = 'browsing';
+        } else if (this.leftGesture === 'closed_fist' || this.rightGesture === 'closed_fist') {
+            state = 'controlling';
+        } else if (this.leftGesture !== 'none' || this.rightGesture !== 'none') {
+            state = 'active';
+        }
+
+        this.interactionStateDisplay.textContent = state;
+        this.interactionStateDisplay.className = `interaction-state state-${state}`;
+    }
+
+    showActionFeedback(action, deck = null) {
+        // Create temporary visual feedback
+        const feedback = document.createElement('div');
+        feedback.className = 'action-feedback';
+        feedback.textContent = deck ? `${action} - Deck ${deck.toUpperCase()}` : action;
+
+        feedback.style.cssText = `
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(124, 58, 237, 0.9);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-weight: 600;
+            z-index: 1000;
+            animation: fadeInOut 1.5s ease;
         `;
+
+        document.body.appendChild(feedback);
+
+        setTimeout(() => {
+            feedback.remove();
+        }, 1500);
     }
 
-    createLoopControls(container) {
-        container.innerHTML = `
-            <div class="loop-controls">
-                <h3>Loop Control</h3>
-                <div class="loop-parameter">
-                    <label>Loop Length</label>
-                    <div class="parameter-control" id="loop-length">
-                        <div class="parameter-value" id="loop-length-value">4 beats</div>
-                    </div>
-                </div>
-                <div class="loop-parameter">
-                    <label>Loop Position</label>
-                    <div class="parameter-control" id="loop-position">
-                        <div class="parameter-value" id="loop-position-value">0.0s</div>
-                    </div>
-                </div>
-                <div class="loop-status">
-                    <span id="loop-active-status">Loop: Inactive</span>
-                </div>
-                <div class="gesture-instructions">
-                    <p>🤏 Pinch: Loop Length</p>
-                    <p>👉 Point: Set In/Out Points</p>
-                    <p>✌️ Two Fingers: Loop Roll</p>
-                </div>
-            </div>
-        `;
+    updateGestureMapping() {
+        console.log(`
+        ╔══════════════════════════════════════════════╗
+        ║          GESTURE CONTROL MAPPING            ║
+        ╠══════════════════════════════════════════════╣
+        ║ HAND → DECK MAPPING:                        ║
+        ║ • Left Hand  → Controls Deck A              ║
+        ║ • Right Hand → Controls Deck B              ║
+        ║                                              ║
+        ║ SINGLE HAND CONTROLS:                       ║
+        ║ • Closed Fist    → Play/Pause Deck          ║
+        ║ • Pinch          → Load Track                ║
+        ║ • Pointer        → Sync Deck                 ║
+        ║ • Two Fingers    → Stop Deck                 ║
+        ║ • Open Palm      → Swipe for modes          ║
+        ║                                              ║
+        ║ TWO HAND COMBINATIONS:                      ║
+        ║ • Both Open      → Neutral/Browse           ║
+        ║ • L-Fist + R-Pinch  → FX Filter            ║
+        ║ • L-Fist + R-Pointer → FX Mix              ║
+        ║ • R-Fist + L-Pinch  → Loop Length          ║
+        ║ • R-Fist + L-Pointer → Loop Position       ║
+        ║ • Any + Two Fingers  → Stop All            ║
+        ║                                              ║
+        ║ MODE SWITCHING:                             ║
+        ║ • Swipe Left/Right with Open Palm          ║
+        ║ • Single hand swipe = easy                  ║
+        ║ • Two hands = needs bigger swipe            ║
+        ╚══════════════════════════════════════════════╝
+        `);
     }
 
-    createScratchControls(container) {
-        container.innerHTML = `
-            <div class="scratch-controls">
-                <h3>Scratch Control</h3>
-                <div class="scratch-parameter">
-                    <label>Scratch Speed</label>
-                    <div class="parameter-control" id="scratch-speed">
-                        <div class="parameter-value" id="scratch-speed-value">0.0</div>
-                    </div>
-                </div>
-                <div class="scratch-parameter">
-                    <label>Pitch Bend</label>
-                    <div class="parameter-control" id="pitch-bend">
-                        <div class="parameter-value" id="pitch-bend-value">0%</div>
-                    </div>
-                </div>
-                <div class="turntable-visual">
-                    <div class="turntable" id="turntable">
-                        <div class="turntable-center"></div>
-                    </div>
-                </div>
-                <div class="gesture-instructions">
-                    <p>🤏 Pinch: Pitch Bend</p>
-                    <p>👉 Point: Scratch Direction</p>
-                    <p>✌️ Two Fingers: Crossfader</p>
-                </div>
-            </div>
-        `;
-    }
-
-    handleInteractionState() {
-        // Handle different interaction states
-        switch (this.interactionState) {
-            case 'browsing':
-                this.clearAllHovers();
-                break;
-
-            case 'selecting_with_left':
-            case 'selecting_with_right':
-                // Mode selection active
-                break;
-
-            case 'controlling_with_left_pinch':
-            case 'controlling_with_right_pinch':
-                this.handlePinchControl();
-                break;
-
-            case 'controlling_with_left_pointer':
-            case 'controlling_with_right_pointer':
-                this.handlePointerControl();
-                break;
-
-            case 'controlling_with_left_two_fingers':
-            case 'controlling_with_right_two_fingers':
-                this.handleTwoFingerControl();
-                break;
-        }
-    }
-
-    handlePinchControl() {
-        if (!this.currentMode) return;
-
-        // Get controlling hand position
-        const controllingHand = this.interactionState.includes('left') ? 'left' : 'right';
-        const position = controllingHand === 'left' ? this.leftPosition : this.rightPosition;
-
-        // Map position to parameter based on mode
-        switch (this.currentMode) {
-            case 'fx':
-                this.updateFXParameter('filter', position.y);
-                break;
-            case 'loop':
-                this.updateLoopParameter('length', position.x);
-                break;
-            case 'scratch':
-                this.updateScratchParameter('pitch', position.y);
-                break;
-        }
-    }
-
-    handlePointerControl() {
-        if (!this.currentMode) return;
-
-        const controllingHand = this.interactionState.includes('left') ? 'left' : 'right';
-        const position = controllingHand === 'left' ? this.leftPosition : this.rightPosition;
-
-        switch (this.currentMode) {
-            case 'fx':
-                this.updateFXParameter('mix', position.x);
-                break;
-            case 'loop':
-                this.updateLoopParameter('position', position.x);
-                break;
-            case 'scratch':
-                this.updateScratchParameter('speed', position.x - 0.5);
-                break;
-        }
-    }
-
-    handleTwoFingerControl() {
-        if (!this.currentMode) return;
-
-        const controllingHand = this.interactionState.includes('left') ? 'left' : 'right';
-        const position = controllingHand === 'left' ? this.leftPosition : this.rightPosition;
-
-        switch (this.currentMode) {
-            case 'fx':
-                this.updateFXParameter('reverb', position.x);
-                this.updateFXParameter('delay', position.y);
-                break;
-            case 'loop':
-                this.updateLoopParameter('roll', position.y);
-                break;
-            case 'scratch':
-                this.updateCrossfader(position.x);
-                break;
-        }
-    }
-
-    updateFXParameter(param, value) {
-        const paramEl = document.getElementById(`fx-${param}-value`);
-        if (paramEl) {
-            const percentage = Math.round(value * 100);
-            paramEl.textContent = `${percentage}%`;
-        }
-
-        // Send to backend
-        if (window.wsClient) {
-            window.wsClient.sendAudioControl('fx_control', {
-                parameter: param,
-                value: value
-            });
-        }
-    }
-
-    updateLoopParameter(param, value) {
-        const paramEl = document.getElementById(`loop-${param}-value`);
-        if (paramEl) {
-            if (param === 'length') {
-                const beats = Math.max(1, Math.round(value * 16));
-                paramEl.textContent = `${beats} beats`;
-            } else if (param === 'position') {
-                paramEl.textContent = `${(value * 10).toFixed(1)}s`;
-            }
-        }
-
-        // Send to backend
-        if (window.wsClient) {
-            window.wsClient.sendAudioControl('loop_control', {
-                parameter: param,
-                value: value
-            });
-        }
-    }
-
-    updateScratchParameter(param, value) {
-        const paramEl = document.getElementById(`${param === 'speed' ? 'scratch-speed' : 'pitch-bend'}-value`);
-        if (paramEl) {
-            if (param === 'speed') {
-                paramEl.textContent = value.toFixed(2);
-            } else {
-                paramEl.textContent = `${Math.round(value * 100)}%`;
-            }
-        }
-
-        // Rotate turntable visual
-        if (param === 'speed') {
-            const turntable = document.getElementById('turntable');
-            if (turntable) {
-                const rotation = value * 360;
-                turntable.style.transform = `rotate(${rotation}deg)`;
-            }
-        }
-
-        // Send to backend
-        if (window.wsClient) {
-            window.wsClient.sendAudioControl('scratch_control', {
-                parameter: param,
-                value: value
-            });
-        }
-    }
-
-    updateCrossfader(value) {
-        const crossfader = document.getElementById('crossfader');
-        if (crossfader) {
-            const percentage = value * 100;
-            crossfader.style.left = `${percentage}%`;
-        }
-
-        // Send to backend
-        if (window.wsClient) {
-            window.wsClient.sendAudioControl('crossfader', {
-                position: value
-            });
-        }
-    }
-
+    // Removed cursor-related methods
     clearAllHovers() {
-        document.querySelectorAll('.hovered').forEach(el => {
-            el.classList.remove('hovered');
-        });
-
-        // Clear gesture button states
-        document.querySelectorAll('.gesture-button').forEach(btn => {
-            btn.classList.remove('gesture-ready', 'gesture-match');
-        });
+        // No longer needed - no cursor system
     }
 }
+
+// Add animations and styles
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes fadeInOut {
+        0% { opacity: 0; transform: translateX(-50%) translateY(20px); }
+        20% { opacity: 1; transform: translateX(-50%) translateY(0); }
+        80% { opacity: 1; transform: translateX(-50%) translateY(0); }
+        100% { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+    }
+
+    @keyframes swipeAnimation {
+        0% {
+            opacity: 0;
+            transform: translate(-50%, -50%) scale(0.5);
+        }
+        50% {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1.2);
+        }
+        100% {
+            opacity: 0;
+            transform: translate(-50%, -50%) scale(1.5);
+        }
+    }
+
+    .mode-info {
+        text-align: center;
+        color: #888;
+    }
+
+    .mode-info h4 {
+        color: #b19aff;
+        margin-bottom: 10px;
+    }
+
+    .mode-info p {
+        margin: 5px 0;
+        font-size: 0.85rem;
+    }
+
+    .state-browsing { color: #666; }
+    .state-controlling { color: #b19aff; }
+    .state-active { color: #888; }
+`;
+document.head.appendChild(style);
 
 // Export for use in main.js
 window.GestureUI = GestureUI;

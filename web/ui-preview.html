@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AirGroove UI Preview</title>
+    <link rel="stylesheet" href="css/dj-layout.css">
+    <link rel="stylesheet" href="css/gestures.css">
+    <link rel="stylesheet" href="css/animations.css">
+    <link rel="stylesheet" href="css/gesture-buttons.css">
+    <style>
+        .preview-notice {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            z-index: 9999;
+            font-family: 'Courier New', monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="preview-notice">
+        <strong>UI Preview Mode</strong><br>
+        Hover over elements to see effects
+    </div>
+
+    <div class="dj-interface">
+        <!-- Header with gesture status -->
+        <header class="interface-header">
+            <div class="logo">
+                <h1>AirGroove</h1>
+                <span class="subtitle">Gesture DJ Interface</span>
+            </div>
+            <div class="gesture-status">
+                <div class="hand-indicator left-hand">
+                    <span class="hand-label">Left Hand</span>
+                    <div class="gesture-display gesture-open_palm">open_palm</div>
+                    <div class="confidence-bar">
+                        <div class="confidence-fill confidence-high" style="width: 85%"></div>
+                    </div>
+                </div>
+                <div class="interaction-state gesture-state-browsing">browsing</div>
+                <div class="hand-indicator right-hand">
+                    <span class="hand-label">Right Hand</span>
+                    <div class="gesture-display gesture-pinch">pinch</div>
+                    <div class="confidence-bar">
+                        <div class="confidence-fill confidence-medium" style="width: 65%"></div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Mode Selection Panel -->
+        <div class="mode-selection">
+            <h2>Control Modes</h2>
+            <div class="mode-buttons">
+                <button class="mode-btn active" id="mode-fx" data-mode="fx">
+                    <div class="mode-icon">🎛️</div>
+                    <span>Control FX</span>
+                </button>
+                <button class="mode-btn" id="mode-loop" data-mode="loop">
+                    <div class="mode-icon">🔄</div>
+                    <span>Loop</span>
+                </button>
+                <button class="mode-btn" id="mode-scratch" data-mode="scratch">
+                    <div class="mode-icon">🎧</div>
+                    <span>Scratch</span>
+                </button>
+            </div>
+            <div class="mode-status">
+                <span>Current Mode: </span>
+                <span id="current-mode">Control FX</span>
+            </div>
+        </div>
+
+        <!-- Main Interface -->
+        <div class="main-interface">
+            <!-- Deck A -->
+            <div class="deck deck-a">
+                <div class="deck-header">
+                    <h3>Deck A</h3>
+                    <div class="deck-controls">
+                        <button class="play-btn hoverable gesture-button" id="play-a" data-gesture="pinch" data-action="play_pause" data-deck="a">
+                            <span class="button-icon">▶️</span>
+                            <span class="gesture-hint">◐ Pinch</span>
+                        </button>
+                        <button class="stop-btn hoverable gesture-button" id="stop-a" data-gesture="two_fingers" data-action="stop" data-deck="a">
+                            <span class="button-icon">⏹️</span>
+                            <span class="gesture-hint">◈ Two Fingers</span>
+                        </button>
+                        <span class="bpm" id="bpm-a">128.5</span>
+                    </div>
+                </div>
+
+                <div class="track-info" id="track-info-a">
+                    <div class="track-title">Ainozama</div>
+                    <div class="track-artist">Demo Track</div>
+                    <div class="track-time">
+                        <span id="current-time-a">02:34</span> /
+                        <span id="total-time-a">04:12</span>
+                    </div>
+                </div>
+
+                <div class="waveform-container">
+                    <canvas class="waveform" id="waveform-a" width="600" height="120"></canvas>
+                    <div class="position-marker" id="position-a" style="left: 60%"></div>
+                </div>
+
+                <div class="volume-control">
+                    <label>Volume</label>
+                    <div class="volume-meter">
+                        <div class="volume-fill" id="volume-a" style="width: 75%"></div>
+                    </div>
+                    <span class="volume-value" id="volume-value-a">75%</span>
+                </div>
+            </div>
+
+            <!-- Center Mixer -->
+            <div class="mixer">
+                <div class="crossfader-section">
+                    <label>Crossfader</label>
+                    <div class="crossfader">
+                        <div class="crossfader-track"></div>
+                        <div class="crossfader-knob" id="crossfader" style="left: 30%"></div>
+                    </div>
+                </div>
+
+                <div class="mode-controls" id="mode-controls">
+                    <div class="fx-controls">
+                        <h3>Control FX</h3>
+                        <div class="fx-parameter">
+                            <label>Filter</label>
+                            <div class="parameter-control" id="fx-filter">
+                                <div class="parameter-value" id="fx-filter-value">50%</div>
+                            </div>
+                        </div>
+                        <div class="fx-parameter">
+                            <label>Reverb</label>
+                            <div class="parameter-control" id="fx-reverb">
+                                <div class="parameter-value" id="fx-reverb-value">25%</div>
+                            </div>
+                        </div>
+                        <div class="fx-parameter">
+                            <label>Delay</label>
+                            <div class="parameter-control" id="fx-delay">
+                                <div class="parameter-value" id="fx-delay-value">15%</div>
+                            </div>
+                        </div>
+                        <div class="gesture-instructions">
+                            <p>◐ Pinch: Filter Control</p>
+                            <p>▶ Point: Effect Mix</p>
+                            <p>◈ Two Fingers: Reverb + Delay</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Deck B -->
+            <div class="deck deck-b">
+                <div class="deck-header">
+                    <h3>Deck B</h3>
+                    <div class="deck-controls">
+                        <button class="play-btn hoverable gesture-button" id="play-b" data-gesture="pointer" data-action="play_pause" data-deck="b">
+                            <span class="button-icon">▶️</span>
+                            <span class="gesture-hint">▶ Pointer</span>
+                        </button>
+                        <button class="stop-btn hoverable gesture-button" id="stop-b" data-gesture="two_fingers" data-action="stop" data-deck="b">
+                            <span class="button-icon">⏹️</span>
+                            <span class="gesture-hint">◈ Two Fingers</span>
+                        </button>
+                        <span class="bpm" id="bpm-b">132.0</span>
+                    </div>
+                </div>
+
+                <div class="track-info" id="track-info-b">
+                    <div class="track-title">Pianos by JTWayne</div>
+                    <div class="track-artist">Demo Track</div>
+                    <div class="track-time">
+                        <span id="current-time-b">01:45</span> /
+                        <span id="total-time-b">03:28</span>
+                    </div>
+                </div>
+
+                <div class="waveform-container">
+                    <canvas class="waveform" id="waveform-b" width="600" height="120"></canvas>
+                    <div class="position-marker" id="position-b" style="left: 40%"></div>
+                </div>
+
+                <div class="volume-control">
+                    <label>Volume</label>
+                    <div class="volume-meter">
+                        <div class="volume-fill" id="volume-b" style="width: 60%"></div>
+                    </div>
+                    <span class="volume-value" id="volume-value-b">60%</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gesture Command Palette -->
+        <div class="gesture-command-palette">
+            <h4>Quick Gesture Commands</h4>
+            <div class="gesture-commands">
+                <div class="gesture-command">
+                    <span class="gesture-icon">◐</span>
+                    <span class="gesture-name">Pinch</span>
+                    <span class="gesture-action">Play/Pause Deck A</span>
+                </div>
+                <div class="gesture-command">
+                    <span class="gesture-icon">▶</span>
+                    <span class="gesture-name">Pointer</span>
+                    <span class="gesture-action">Play/Pause Deck B</span>
+                </div>
+                <div class="gesture-command">
+                    <span class="gesture-icon">◈</span>
+                    <span class="gesture-name">Two Fingers</span>
+                    <span class="gesture-action">Stop All Decks</span>
+                </div>
+                <div class="gesture-command">
+                    <span class="gesture-icon">●</span>
+                    <span class="gesture-name">Fist (on button)</span>
+                    <span class="gesture-action">Select Mode</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer with debug info -->
+        <footer class="debug-panel">
+            <div class="fps-counter">FPS: <span id="fps">60</span></div>
+            <div class="connection-status">
+                Status: <span id="connection-status" class="connected">Connected</span>
+            </div>
+            <div class="gesture-debug">
+                <span id="debug-info">L: open_palm | R: pinch | State: browsing</span>
+            </div>
+            <div class="quick-gesture-feedback" id="quick-gesture-feedback"></div>
+        </footer>
+    </div>
+
+    <!-- Gesture Pointer -->
+    <div class="gesture-pointer active pinch" id="gesture-pointer" style="left: 50%; top: 50%;">
+        <div class="pointer-inner"></div>
+        <div class="pointer-trail"></div>
+    </div>
+
+    <script>
+        // Add some interactive effects for the preview
+        document.addEventListener('DOMContentLoaded', function() {
+            // Mode button interactions
+            document.querySelectorAll('.mode-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    document.getElementById('current-mode').textContent = this.querySelector('span').textContent;
+                });
+            });
+
+            // Gesture button hover effects
+            document.querySelectorAll('.gesture-button').forEach(btn => {
+                btn.addEventListener('mouseenter', function() {
+                    this.classList.add('gesture-ready');
+                });
+                btn.addEventListener('mouseleave', function() {
+                    this.classList.remove('gesture-ready');
+                });
+            });
+
+            // Simulate gesture cursor movement
+            let cursor = document.getElementById('gesture-pointer');
+            let gestures = ['open_palm', 'pinch', 'pointer', 'two_fingers', 'closed_fist'];
+            let currentGesture = 0;
+
+            setInterval(() => {
+                currentGesture = (currentGesture + 1) % gestures.length;
+                cursor.className = `gesture-pointer active ${gestures[currentGesture]}`;
+                
+                // Move cursor around
+                let x = 20 + Math.random() * 60;
+                let y = 20 + Math.random() * 60;
+                cursor.style.left = x + '%';
+                cursor.style.top = y + '%';
+            }, 2000);
+        });
+    </script>
+</body>
+</html>
