@@ -80,3 +80,4 @@ AirGroove DJ is an innovative gesture-controlled DJ mixing application that tran
 ## 🏛️ System Architecture
 
 The application consists of a Python backend and a JavaScript frontend, communicating in real-time via WebSockets.
+01/10/25
