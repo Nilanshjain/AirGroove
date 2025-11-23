@@ -56,26 +56,62 @@ AirGroove DJ is an innovative gesture-controlled DJ mixing application that tran
 
 ### Quick Start
 
-1.  **(Recommended) Test your gestures**:
-    Run the gesture test script to get familiar with the hand gestures and ensure your setup is working correctly.
-    ```bash
-    python test_gestures.py
-    ```
-
-2.  **Run the main application**:
-    This will start the backend server and open the web interface in your default browser.
+1.  **Run the main application**:
+    This will start the backend server.
     ```bash
     python main_precision.py
     ```
 
+2.  **Open the web interface**:
+    Open `web/index.html` in your browser and allow webcam access when prompted.
+
 3.  **Start Mixing!**
-    The web interface will open automatically. Use the gestures you practiced to control the music.
+    Load tracks, switch modes with hand gestures, and start DJing!
 
 ### Control Modes
 
 -   **🎛️ FX Mode**: Control audio effects like filters and reverb.
 -   **🔄 Loop Mode**: Create and control audio loops.
 -   **🎧 Scratch Mode**: Scratch tracks and control pitch.
+
+## 📁 Project Structure
+
+```
+AirGroove/
+├── main_precision.py          # Main application entry point
+├── config.yaml                # Configuration settings
+├── requirements.txt           # Python dependencies
+├── src/                       # Python backend modules
+│   ├── precision_gestures.py  # Gesture recognition logic
+│   ├── web_audio_engine.py    # Audio playback engine
+│   ├── websocket_enhanced.py  # WebSocket server
+│   ├── gesture_smoother.py    # Gesture smoothing
+│   └── config_loader.py       # Configuration loader
+├── web/                       # Frontend web application
+│   ├── index.html             # Main DJ interface
+│   ├── library.html           # Music library page
+│   ├── profile.html           # User profile page
+│   ├── css/                   # Stylesheets
+│   │   ├── dj-layout.css      # Main layout styles
+│   │   ├── navbar.css         # Navigation styles
+│   │   ├── library.css        # Library styles
+│   │   ├── profile.css        # Profile styles
+│   │   └── ...
+│   └── js/                    # JavaScript modules
+│       ├── main.js            # Main application logic
+│       ├── gesture-ui.js      # Gesture UI updates
+│       ├── audio-controls.js  # Audio control logic
+│       ├── waveform.js        # Waveform visualization
+│       ├── library-manager.js # Library management
+│       ├── library-page.js    # Library page logic
+│       ├── profile.js         # Profile management
+│       ├── genres.js          # Genre system (150+ genres)
+│       └── ...
+├── audio/                     # Sample audio files
+└── docs/                      # Documentation
+    ├── TESTING_GUIDE.md       # Comprehensive testing guide (45 tests)
+    └── archive/               # Historical documentation
+```
 
 ## 🏛️ System Architecture
 

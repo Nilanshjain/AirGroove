@@ -159,6 +159,17 @@ class EnhancedWebSocketServer:
         if hasattr(self, 'audio_control_callback'):
             self.audio_control_callback(action, parameters)
 
+    async def handle_waveform_seek(self, websocket, payload):
+        """Handle waveform seek requests from client."""
+        deck = payload.get('deck')  # 'a' or 'b'
+        position = payload.get('position')  # Position in seconds
+
+        print(f"[WebSocket] Waveform seek: deck {deck} to {position:.2f}s")
+
+        # Use audio_control_callback for consistency
+        if hasattr(self, 'audio_control_callback'):
+            self.audio_control_callback('seek', {'deck': deck, 'position': position})
+
     async def handle_ui_interaction(self, websocket, payload):
         """Handle UI interaction events from client."""
         element = payload.get('element')
@@ -167,6 +178,34 @@ class EnhancedWebSocketServer:
 
         if hasattr(self, 'ui_interaction_callback'):
             self.ui_interaction_callback(element, action, position)
+
+    async def handle_fx_control(self, websocket, payload):
+        """Handle FX control commands from client."""
+        parameter = payload.get('parameter')
+        value = payload.get('value')
+
+        print(f"[WebSocket] FX control: {parameter} = {value}")
+
+        # Use audio_control_callback with fx_control action
+        if hasattr(self, 'audio_control_callback'):
+            self.audio_control_callback('fx_control', {'parameter': parameter, 'value': value})
+
+    async def handle_loop_control(self, websocket, payload):
+        """Handle loop control commands from client."""
+        parameter = payload.get('parameter')
+        value = payload.get('value')
+        action = payload.get('action')
+
+        if action:
+            print(f"[WebSocket] Loop action: {action}")
+            # Handle loop actions (set_in, set_out, roll)
+            if hasattr(self, 'audio_control_callback'):
+                self.audio_control_callback('loop_action', {'action': action, **payload})
+        elif parameter:
+            print(f"[WebSocket] Loop control: {parameter} = {value}")
+            # Handle loop parameter changes (enable, length, position)
+            if hasattr(self, 'audio_control_callback'):
+                self.audio_control_callback('loop_control', {'parameter': parameter, 'value': value})
 
     async def process_messages(self):
         """Process queued messages and broadcast to clients."""
@@ -229,11 +268,15 @@ class EnhancedWebSocketServer:
         if not self.clients:
             return
 
-        message = {
-            'type': 'system_update',
-            'payload': system_data,
-            'timestamp': time.time()
-        }
+        # Check if this is actually a mode_change message
+        if isinstance(system_data, dict) and system_data.get('type') == 'mode_change':
+            message = system_data  # Already formatted correctly
+        else:
+            message = {
+                'type': 'system_update',
+                'payload': system_data,
+                'timestamp': time.time()
+            }
 
         # Update state cache
         self.current_state['system'] = system_data
@@ -310,6 +353,21 @@ class EnhancedWebSocketServer:
     def set_ui_interaction_callback(self, callback):
         """Set callback for UI interaction events."""
         self.ui_interaction_callback = callback
+
+    def broadcast_json(self, data):
+        """Broadcast JSON data to all clients (synchronous wrapper)."""
+        if not self.is_running:
+            return
+
+        # Queue the data for async processing
+        try:
+            self.system_queue.put_nowait(data)
+        except asyncio.QueueFull:
+            try:
+                self.system_queue.get_nowait()
+                self.system_queue.put_nowait(data)
+            except asyncio.QueueEmpty:
+                pass
 
     def get_stats(self) -> Dict:
         """Get server statistics."""

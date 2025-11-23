@@ -27,8 +27,73 @@ class WaveformVisualizer {
         this.resizeCanvas();
         window.addEventListener('resize', () => this.resizeCanvas());
 
+        // Add click-to-seek functionality
+        this.setupClickHandlers();
+
         // Clear canvas initially
         this.clear();
+    }
+
+    setupClickHandlers() {
+        // Hover effect variables
+        this.hoverPosition = null;
+        this.isHovering = false;
+
+        // Click event for seeking
+        this.canvas.addEventListener('click', (e) => this.handleClick(e));
+
+        // Mousemove for hover preview
+        this.canvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
+
+        // Mouseleave to clear hover
+        this.canvas.addEventListener('mouseleave', () => this.handleMouseLeave());
+
+        // Add cursor pointer style
+        this.canvas.style.cursor = 'pointer';
+    }
+
+    handleClick(event) {
+        if (this.duration <= 0) {
+            console.warn('[Waveform] Cannot seek - no track loaded');
+            return;
+        }
+
+        const rect = this.canvas.getBoundingClientRect();
+        const clickX = event.clientX - rect.left;
+        const clickRatio = clickX / this.canvas.width;
+        const seekTime = clickRatio * this.duration;
+
+        console.log(`[Waveform ${this.deck}] Seeking to ${seekTime.toFixed(2)}s (${(clickRatio * 100).toFixed(1)}%)`);
+
+        // Send seek command via WebSocket
+        if (window.wsClient) {
+            window.wsClient.sendAudioControl('seek', {
+                deck: this.deck,
+                position: seekTime
+            });
+        } else {
+            console.warn('[Waveform] WebSocket client not available');
+        }
+    }
+
+    handleMouseMove(event) {
+        if (this.duration <= 0) {
+            return;
+        }
+
+        const rect = this.canvas.getBoundingClientRect();
+        const mouseX = event.clientX - rect.left;
+        const hoverRatio = mouseX / this.canvas.width;
+
+        this.hoverPosition = hoverRatio;
+        this.isHovering = true;
+        this.draw();
+    }
+
+    handleMouseLeave() {
+        this.isHovering = false;
+        this.hoverPosition = null;
+        this.draw();
     }
 
     resizeCanvas() {
@@ -102,6 +167,39 @@ class WaveformVisualizer {
         this.ctx.moveTo(0, centerY);
         this.ctx.lineTo(this.canvas.width, centerY);
         this.ctx.stroke();
+
+        // Draw hover indicator
+        if (this.isHovering && this.hoverPosition !== null) {
+            const hoverX = this.hoverPosition * this.canvas.width;
+
+            // Draw vertical line
+            this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+            this.ctx.lineWidth = 2;
+            this.ctx.beginPath();
+            this.ctx.moveTo(hoverX, 0);
+            this.ctx.lineTo(hoverX, this.canvas.height);
+            this.ctx.stroke();
+
+            // Draw time indicator
+            const hoverTime = this.hoverPosition * this.duration;
+            const timeText = this.formatTime(hoverTime);
+
+            this.ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+            this.ctx.fillRect(hoverX - 30, 5, 60, 20);
+
+            this.ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+            this.ctx.font = '11px Inter, sans-serif';
+            this.ctx.textAlign = 'center';
+            this.ctx.textBaseline = 'middle';
+            this.ctx.fillText(timeText, hoverX, 15);
+        }
+    }
+
+    formatTime(seconds) {
+        if (!seconds || seconds === 0) return '0:00';
+        const mins = Math.floor(seconds / 60);
+        const secs = Math.floor(seconds % 60);
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
     }
 
     drawPlaceholder() {

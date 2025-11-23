@@ -10,6 +10,9 @@ sounddevice==0.5.2
 soundfile==0.13.1
 librosa==0.11.0
 audioread==3.0.1
+pedalboard>=0.9.19
+pyrubberband>=0.3.0
+pydub>=0.25.1
 
 # Web Framework & Communication
 Flask==2.3.3
@@ -23,3 +26,4 @@ scipy==1.15.2
 # Utilities
 Pillow==10.2.0
 matplotlib==3.7.2
+PyYAML==6.0.1

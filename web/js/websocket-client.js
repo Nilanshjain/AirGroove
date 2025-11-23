@@ -15,6 +15,9 @@ class WebSocketClient {
         this.onGestureUpdate = null;
         this.onAudioUpdate = null;
         this.onSystemUpdate = null;
+        this.onModeChange = null;
+        this.onModeGesture = null;
+        this.onFXStateUpdate = null;
         this.onConnectionChange = null;
 
         this.connect();
@@ -73,6 +76,9 @@ class WebSocketClient {
     }
 
     handleMessage(data) {
+        // Log all incoming messages for debugging
+        console.log('[WebSocket] Received message:', data.type, data.payload);
+
         switch (data.type) {
             case 'gesture_update':
                 if (this.onGestureUpdate) {
@@ -92,8 +98,28 @@ class WebSocketClient {
                 }
                 break;
 
+            case 'mode_change':
+                console.log('[WebSocket] Mode change detected:', data.payload);
+                if (this.onModeChange) {
+                    this.onModeChange(data.payload);
+                }
+                break;
+
+            case 'mode_gesture':
+                console.log('[WebSocket] Mode gesture received:', data.payload);
+                if (this.onModeGesture) {
+                    this.onModeGesture(data.payload);
+                }
+                break;
+
+            case 'fx_state_update':
+                if (this.onFXStateUpdate) {
+                    this.onFXStateUpdate(data.payload);
+                }
+                break;
+
             default:
-                console.log('Unknown message type:', data.type);
+                console.log('[WebSocket] Unknown message type:', data.type, data);
         }
     }
 

@@ -4,45 +4,49 @@ Web-optimized audio engine with mode-based control for AirGroove DJ interface.
 Handles audio processing, effects, and real-time parameter updates.
 """
 
-import pygame
 import threading
 import time
 import numpy as np
 from typing import Dict, Optional, Callable
 import os
-import librosa
+from sounddevice_audio_engine import SoundDeviceAudioEngine
+from effects_processor import EffectsProcessor
 
 class WebAudioEngine:
     """Web-optimized audio engine with advanced DJ controls."""
 
     def __init__(self):
         """Initialize the web audio engine."""
-        pygame.mixer.pre_init(frequency=44100, size=-16, channels=2, buffer=512)
-        pygame.mixer.init()
+        # Use sounddevice backend for real-time audio processing
+        self.sd_engine = SoundDeviceAudioEngine(sample_rate=44100, buffer_size=1024)
 
-        # Audio state
-        self.deck_a = AudioDeck('A')
-        self.deck_b = AudioDeck('B')
-        self.crossfader_position = 0.5  # 0 = full A, 1 = full B
-        self.master_volume = 1.0
+        # Current mode - Default to NORMAL mode
+        self.current_mode = 'normal'
 
-        # Current mode and effects
-        self.current_mode = None
-        self.fx_engine = EffectsEngine()
+        # Mode-specific engines
+        self.fx_engine = EffectsEngine(self.sd_engine.effects_processor)
         self.loop_engine = LoopEngine()
         self.scratch_engine = ScratchEngine()
 
         # Status callback
         self.on_status_changed = None
+        self.on_fx_state_changed = None
 
-        # Audio processing thread
+        # Audio processing thread for status updates
         self.processing_thread = None
         self.is_processing = False
 
-        print("[AudioEngine] Web audio engine initialized")
+        # Cached FX state for change detection
+        self._last_fx_state = None
+
+        print("[AudioEngine] Web audio engine initialized with sounddevice backend")
 
     def start_processing(self):
-        """Start the audio processing thread."""
+        """Start the audio processing."""
+        # Start sounddevice audio stream
+        self.sd_engine.start_processing()
+
+        # Start status update thread
         if not self.is_processing:
             self.is_processing = True
             self.processing_thread = threading.Thread(target=self._processing_loop)
@@ -50,30 +54,21 @@ class WebAudioEngine:
             self.processing_thread.start()
 
     def stop_processing(self):
-        """Stop the audio processing thread."""
+        """Stop the audio processing."""
+        # Stop sounddevice audio stream
+        self.sd_engine.stop_processing()
+
+        # Stop status update thread
         self.is_processing = False
         if self.processing_thread:
             self.processing_thread.join()
 
     def _processing_loop(self):
-        """Main audio processing loop."""
+        """Main status update loop."""
         while self.is_processing:
-            # Update deck states
-            self.deck_a.update()
-            self.deck_b.update()
-
-            # Apply mode-specific processing
-            if self.current_mode == 'fx':
-                self.fx_engine.process(self.deck_a, self.deck_b)
-            elif self.current_mode == 'loop':
-                self.loop_engine.process(self.deck_a, self.deck_b)
-            elif self.current_mode == 'scratch':
-                self.scratch_engine.process(self.deck_a, self.deck_b)
-
-            # Send status updates
+            # Send status updates (actual audio processing happens in sounddevice callback)
             self._send_status_update()
-
-            time.sleep(1/60)  # 60 FPS processing
+            time.sleep(1/60)  # 60 FPS status updates
 
     def set_mode(self, mode: str):
         """Set the current control mode."""
@@ -88,46 +83,62 @@ class WebAudioEngine:
         elif mode == 'scratch':
             self.scratch_engine.reset()
 
-    # Deck control methods
+    # Deck control methods (pass through to sounddevice backend)
     def load_track(self, deck: str, file_path: str):
         """Load a track into the specified deck."""
-        target_deck = self.deck_a if deck.lower() == 'a' else self.deck_b
-        target_deck.load_track(file_path)
+        self.sd_engine.load_track(deck, file_path)
 
     def play_deck(self, deck: str):
         """Start playing the specified deck."""
-        target_deck = self.deck_a if deck.lower() == 'a' else self.deck_b
-        target_deck.play()
+        self.sd_engine.play_deck(deck)
 
     def pause_deck(self, deck: str):
         """Pause the specified deck."""
-        target_deck = self.deck_a if deck.lower() == 'a' else self.deck_b
-        target_deck.pause()
+        self.sd_engine.pause_deck(deck)
 
     def stop_deck(self, deck: str):
         """Stop the specified deck."""
-        target_deck = self.deck_a if deck.lower() == 'a' else self.deck_b
-        target_deck.stop()
+        self.sd_engine.stop_deck(deck)
+
+    def unload_track(self, deck: str):
+        """Unload/eject track from the specified deck."""
+        self.sd_engine.unload_track(deck)
 
     def set_deck_volume(self, deck: str, volume: float):
         """Set volume for the specified deck."""
-        target_deck = self.deck_a if deck.lower() == 'a' else self.deck_b
-        target_deck.set_volume(volume)
+        self.sd_engine.set_deck_volume(deck, volume)
+
+    def seek_deck(self, deck: str, position: float):
+        """Seek to a specific position in the track (in seconds)."""
+        self.sd_engine.seek_deck(deck, position)
 
     def set_crossfader(self, position: float):
-        """Set crossfader position (0.0 = deck A, 1.0 = deck B)."""
-        self.crossfader_position = max(0.0, min(1.0, position))
+        """Set crossfader position and apply audio mixing (0.0 = deck A, 1.0 = deck B)."""
+        # Pass through to sounddevice backend (it handles constant power law)
+        self.sd_engine.set_crossfader(position)
+
+        # Send update to web interface immediately
+        self._send_status_update()
 
     # Mode-specific control methods
     def fx_control(self, parameter: str, value: float):
         """Control FX parameters."""
         if self.current_mode == 'fx':
             self.fx_engine.set_parameter(parameter, value)
+            # Pass through to sounddevice backend effects processor
+            self.sd_engine.fx_control(parameter, value)
 
     def loop_control(self, parameter: str, value: float):
         """Control loop parameters."""
         if self.current_mode == 'loop':
             self.loop_engine.set_parameter(parameter, value)
+        # Pass through to sounddevice backend
+        self.sd_engine.loop_control(parameter, value)
+
+    def loop_action(self, action: str, parameters: dict):
+        """Handle loop actions."""
+        # Pass through to sounddevice backend
+        self.sd_engine.loop_action(action, parameters)
 
     def scratch_control(self, parameter: str, value: float):
         """Control scratch parameters."""
@@ -137,164 +148,69 @@ class WebAudioEngine:
     def _send_status_update(self):
         """Send status update to web interface."""
         if self.on_status_changed:
+            # Get status from sounddevice backend
+            deck_a_status = self.sd_engine.deck_a.get_status()
+            deck_b_status = self.sd_engine.deck_b.get_status()
+
+            # Get FX state from real effects processor
+            fx_state = self.sd_engine.get_fx_state() if self.current_mode == 'fx' else self.fx_engine.get_state()
+
+            # Only send FX state update if it changed (reduce WebSocket traffic)
+            fx_state_changed = (fx_state != self._last_fx_state)
+            if fx_state_changed:
+                self._last_fx_state = fx_state.copy() if isinstance(fx_state, dict) else fx_state
+
             status = {
-                'deck_a': self.deck_a.get_status(),
-                'deck_b': self.deck_b.get_status(),
-                'crossfader': self.crossfader_position,
-                'master_volume': self.master_volume,
+                'deck_a': deck_a_status,
+                'deck_b': deck_b_status,
+                'crossfader': self.sd_engine.crossfader_position,
+                'master_volume': self.sd_engine.master_volume,
                 'current_mode': self.current_mode,
-                'fx_state': self.fx_engine.get_state() if self.current_mode == 'fx' else {},
+                'fx_state': fx_state,
                 'loop_state': self.loop_engine.get_state() if self.current_mode == 'loop' else {},
                 'scratch_state': self.scratch_engine.get_state() if self.current_mode == 'scratch' else {}
             }
             self.on_status_changed(status)
 
+            # Also send dedicated FX state update ONLY if changed and in FX mode
+            if (fx_state_changed and hasattr(self, 'on_fx_state_changed') and
+                self.on_fx_state_changed and self.current_mode == 'fx'):
+                self.on_fx_state_changed(fx_state)
+
     def stop(self):
         """Stop the audio engine."""
         self.stop_processing()
-        self.deck_a.stop()
-        self.deck_b.stop()
-        pygame.mixer.quit()
-
-
-class AudioDeck:
-    """Individual audio deck with playback control."""
-
-    def __init__(self, name: str):
-        """Initialize an audio deck."""
-        self.name = name
-        self.sound = None
-        self.channel = None
-        self.file_path = None
-        self.track_name = ""
-        self.artist = ""
-        self.bpm = 120.0
-        self.position = 0.0
-        self.duration = 0.0
-        self.volume = 1.0
-        self.playing = False
-        self.waveform_data = []
-
-    def load_track(self, file_path: str):
-        """Load an audio track."""
-        try:
-            if os.path.exists(file_path):
-                self.file_path = file_path
-                self.sound = pygame.mixer.Sound(file_path)
-                self.track_name = os.path.basename(file_path)
-                self.artist = "Unknown Artist"
-
-                # Load audio for analysis
-                y, sr = librosa.load(file_path, sr=22050)
-                self.duration = len(y) / sr
-
-                # Generate waveform data
-                hop_length = len(y) // 1000  # 1000 points max
-                self.waveform_data = y[::hop_length].tolist()
-
-                # Estimate BPM
-                tempo, _ = librosa.beat.beat_track(y=y, sr=sr)
-                self.bpm = float(tempo)
-
-                print(f"[Deck {self.name}] Loaded: {self.track_name}")
-
-        except Exception as e:
-            print(f"[Deck {self.name}] Error loading track: {e}")
-
-    def play(self):
-        """Start playing the track."""
-        if self.sound:
-            self.channel = self.sound.play()
-            self.playing = True
-            print(f"[Deck {self.name}] Playing")
-
-    def pause(self):
-        """Pause the track."""
-        if self.channel:
-            pygame.mixer.pause()
-            self.playing = False
-            print(f"[Deck {self.name}] Paused")
-
-    def stop(self):
-        """Stop the track."""
-        if self.channel:
-            self.channel.stop()
-            self.playing = False
-            self.position = 0.0
-            print(f"[Deck {self.name}] Stopped")
-
-    def set_volume(self, volume: float):
-        """Set deck volume."""
-        self.volume = max(0.0, min(1.0, volume))
-        if self.channel:
-            self.channel.set_volume(self.volume)
-
-    def update(self):
-        """Update deck state."""
-        if self.channel and self.playing:
-            # Update position (simplified)
-            if not self.channel.get_busy():
-                self.playing = False
-                self.position = 0.0
-
-    def get_status(self) -> Dict:
-        """Get current deck status."""
-        return {
-            'track_name': self.track_name,
-            'artist': self.artist,
-            'bpm': self.bpm,
-            'position': self.position,
-            'duration': self.duration,
-            'playing': self.playing,
-            'volume': self.volume,
-            'waveform': self.waveform_data
-        }
+        print("[AudioEngine] Stopped")
 
 
 class EffectsEngine:
-    """Audio effects processing for FX mode."""
+    """Audio effects processing for FX mode (wraps real EffectsProcessor)."""
 
-    def __init__(self):
-        """Initialize effects engine."""
-        self.filter_freq = 0.5
-        self.reverb_level = 0.0
-        self.delay_level = 0.0
-        self.mix_level = 0.5
+    def __init__(self, effects_processor: EffectsProcessor):
+        """Initialize effects engine with real effects processor."""
+        self.effects_processor = effects_processor
 
     def set_parameter(self, parameter: str, value: float):
         """Set effect parameter."""
-        value = max(0.0, min(1.0, value))
-
-        if parameter == 'filter':
-            self.filter_freq = value
-        elif parameter == 'reverb':
-            self.reverb_level = value
-        elif parameter == 'delay':
-            self.delay_level = value
-        elif parameter == 'mix':
-            self.mix_level = value
-
-    def process(self, deck_a: AudioDeck, deck_b: AudioDeck):
-        """Process audio with effects."""
-        # Simplified effects processing
-        # In a real implementation, this would apply actual DSP effects
-        pass
+        # Map generic parameters to specific effects processor methods
+        if parameter == 'filter_type':
+            self.effects_processor.set_filter_type(str(value))
+        elif parameter == 'cutoff':
+            self.effects_processor.set_filter_cutoff(value)
+        elif parameter == 'resonance':
+            self.effects_processor.set_filter_resonance(value)
+        elif parameter == 'wet_dry':
+            self.effects_processor.set_wet_dry_mix(value)
+        elif parameter == 'enable':
+            self.effects_processor.enable_filter(bool(value))
 
     def reset(self):
         """Reset all effects."""
-        self.filter_freq = 0.5
-        self.reverb_level = 0.0
-        self.delay_level = 0.0
-        self.mix_level = 0.5
+        self.effects_processor.reset()
 
     def get_state(self) -> Dict:
         """Get current effects state."""
-        return {
-            'filter': self.filter_freq,
-            'reverb': self.reverb_level,
-            'delay': self.delay_level,
-            'mix': self.mix_level
-        }
+        return self.effects_processor.get_state()
 
 
 class LoopEngine:
@@ -318,7 +234,7 @@ class LoopEngine:
             # Trigger loop roll effect
             pass
 
-    def process(self, deck_a: AudioDeck, deck_b: AudioDeck):
+    def process(self, deck_a, deck_b):
         """Process loop controls."""
         # Simplified loop processing
         pass
@@ -356,7 +272,7 @@ class ScratchEngine:
         elif parameter == 'pitch':
             self.pitch_bend = (value - 0.5) * 2.0  # -1 to 1
 
-    def process(self, deck_a: AudioDeck, deck_b: AudioDeck):
+    def process(self, deck_a, deck_b):
         """Process scratch controls."""
         # Update turntable position based on scratch speed
         self.turntable_position += self.scratch_speed

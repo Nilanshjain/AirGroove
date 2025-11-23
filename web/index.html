@@ -9,51 +9,95 @@
     <link rel="stylesheet" href="css/gestures.css">
     <link rel="stylesheet" href="css/animations.css">
     <link rel="stylesheet" href="css/gesture-buttons.css">
+    <link rel="stylesheet" href="css/library.css">
+    <link rel="stylesheet" href="css/fx-controls.css">
+    <link rel="stylesheet" href="css/loop-controls.css">
 </head>
 <body>
     <!-- Professional Navbar -->
     <nav class="navbar">
         <div class="navbar-brand">
-            <div class="navbar-logo">A</div>
+            <div class="navbar-logo">
+                <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="20" cy="20" r="18" fill="url(#grad1)" stroke="#7c3aed" stroke-width="2"/>
+                    <path d="M15 12v16l12-8z" fill="white"/>
+                    <defs>
+                        <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" style="stop-color:#7c3aed;stop-opacity:0.8" />
+                            <stop offset="100%" style="stop-color:#a78bfa;stop-opacity:0.9" />
+                        </linearGradient>
+                    </defs>
+                </svg>
+            </div>
             <div class="navbar-title">AirGroove</div>
         </div>
         <div class="navbar-menu">
-            <a href="#" class="navbar-item active hoverable">Homepage</a>
-            <a href="#library" class="navbar-item hoverable">Library</a>
+            <a href="index.html" class="navbar-item active hoverable">Homepage</a>
+            <a href="library.html" class="navbar-item hoverable">Library</a>
             <a href="#how-to-use" class="navbar-item hoverable" onclick="window.app?.showHowToUse()">How to Use</a>
             <a href="#settings" class="navbar-item hoverable">Settings</a>
         </div>
-        <div class="navbar-profile hoverable">
+        <a href="profile.html" class="navbar-profile hoverable" style="text-decoration: none; color: inherit;">
             <div class="profile-avatar">U</div>
             <span class="profile-name">User</span>
-        </div>
+        </a>
     </nav>
 
     <div class="dj-interface" style="margin-top: 60px;">
-        <!-- Simplified Header with centered gesture display -->
+        <!-- Professional Mode Indicator Header -->
         <header class="interface-header">
-            <div class="gesture-display-container">
-                <div class="gesture-status">
-                    <div class="hand-indicator">
-                        <span class="hand-label">L</span>
-                        <div class="gesture-display" id="left-gesture">✋</div>
+            <div class="mode-indicator-container">
+                <div class="current-mode-display">
+                    <span class="mode-label">CURRENT MODE</span>
+                    <div class="mode-name" id="current-mode-name">NORMAL</div>
+                    <span class="mode-instruction">Swipe left/right to change mode</span>
+                </div>
+
+                <div class="mode-selector">
+                    <div class="mode-item" data-mode="normal">
+                        <span class="mode-icon">
+                            <svg viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M8 5v14l11-7z"/>
+                            </svg>
+                        </span>
+                        <span class="mode-text">NORMAL</span>
                     </div>
-                    <div class="interaction-state" id="interaction-state">browsing</div>
-                    <div class="hand-indicator">
-                        <span class="hand-label">R</span>
-                        <div class="gesture-display" id="right-gesture">✋</div>
+                    <div class="mode-item" data-mode="fx">
+                        <span class="mode-icon">
+                            <svg viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12 2L2 12l10 10 10-10L12 2z"/>
+                            </svg>
+                        </span>
+                        <span class="mode-text">FX</span>
+                    </div>
+                    <div class="mode-item" data-mode="loop">
+                        <span class="mode-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 2v6h-6M3 22v-6h6M21 8c-1.5-3.5-5-6-9-6C6.5 2 2 6.5 2 12s4.5 10 10 10c4 0 7.5-2.5 9-6"/>
+                            </svg>
+                        </span>
+                        <span class="mode-text">LOOP</span>
+                    </div>
+                    <div class="mode-item" data-mode="scratch">
+                        <span class="mode-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <circle cx="12" cy="12" r="3"/>
+                            </svg>
+                        </span>
+                        <span class="mode-text">SCRATCH</span>
                     </div>
                 </div>
-                <div class="mode-buttons">
-                    <button class="mode-btn" id="mode-fx" data-mode="fx">
-                        <span>FX</span>
-                    </button>
-                    <button class="mode-btn" id="mode-loop" data-mode="loop">
-                        <span>Loop</span>
-                    </button>
-                    <button class="mode-btn" id="mode-scratch" data-mode="scratch">
-                        <span>Scratch</span>
-                    </button>
+            </div>
+
+            <div class="gesture-status-compact">
+                <div class="hand-status">
+                    <span class="hand-label-compact">LEFT</span>
+                    <span class="gesture-text" id="left-gesture-text">none</span>
+                </div>
+                <div class="hand-status">
+                    <span class="hand-label-compact">RIGHT</span>
+                    <span class="gesture-text" id="right-gesture-text">none</span>
                 </div>
             </div>
         </header>
@@ -65,24 +109,46 @@
                 <div class="deck-header">
                     <h3>Deck A</h3>
                     <div class="deck-controls">
-                        <button class="play-btn hoverable gesture-button" id="play-a" data-gesture="pinch" data-action="play_pause" data-deck="a">
-                            <span class="button-icon">▶️</span>
-                            <span class="gesture-hint">◐ Pinch</span>
+                        <button class="play-btn hoverable gesture-button" id="play-a" data-gesture="tap" data-action="play_pause" data-deck="a">
+                            <span class="button-label">PLAY</span>
+                            <span class="gesture-hint">Tap</span>
                         </button>
-                        <button class="stop-btn hoverable gesture-button" id="stop-a" data-gesture="two_fingers" data-action="stop" data-deck="a">
-                            <span class="button-icon">⏹️</span>
-                            <span class="gesture-hint">◈ Two Fingers</span>
+                        <button class="stop-btn hoverable gesture-button" id="stop-a" data-gesture="thumbs_down" data-action="stop" data-deck="a">
+                            <span class="button-label">STOP</span>
+                            <span class="gesture-hint">Thumbs Down</span>
                         </button>
                         <span class="bpm" id="bpm-a">120.0</span>
                     </div>
                 </div>
 
-                <div class="track-info hoverable" id="track-info-a" data-deck="a" data-action="load_track">
+                <div class="track-info" id="track-info-a">
                     <div class="track-title">No Track Loaded</div>
-                    <div class="track-artist">Click or fist gesture to load track</div>
+                    <div class="track-artist">Ready to load</div>
                     <div class="track-time">
                         <span id="current-time-a">00:00</span> /
                         <span id="total-time-a">00:00</span>
+                    </div>
+                    <button class="load-track-btn hoverable" id="load-track-a" data-deck="a">
+                        <span>LOAD TRACK</span>
+                    </button>
+
+                    <div class="track-navigation">
+                        <button class="track-nav-btn" id="prev-track-a" data-deck="a">
+                            <span class="nav-icon">
+                                <svg viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/>
+                                </svg>
+                            </span>
+                            <span>PREV</span>
+                        </button>
+                        <button class="track-nav-btn" id="next-track-a" data-deck="a">
+                            <span>NEXT</span>
+                            <span class="nav-icon">
+                                <svg viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M16 18h2V6h-2zm-11-6l8.5-6v12z"/>
+                                </svg>
+                            </span>
+                        </button>
                     </div>
                 </div>
 
@@ -90,7 +156,6 @@
                     <canvas class="waveform" id="waveform-a" width="600" height="120"></canvas>
                     <div class="position-marker" id="position-a"></div>
                     <button class="sync-btn hoverable" id="sync-a" data-deck="a">
-                        <span class="sync-icon">⟲</span>
                         <span class="sync-label">SYNC</span>
                     </button>
                 </div>
@@ -109,9 +174,15 @@
                 <div class="crossfader-section">
                     <label>Crossfader</label>
                     <div class="crossfader">
+                        <div class="crossfader-trail" id="crossfader-trail"></div>
                         <div class="crossfader-track"></div>
                         <div class="crossfader-knob" id="crossfader"></div>
                     </div>
+                    <div class="crossfader-labels">
+                        <span class="crossfader-label-a">DECK A</span>
+                        <span class="crossfader-label-b">DECK B</span>
+                    </div>
+                    <div class="crossfader-position" id="crossfader-position">50%</div>
                 </div>
 
                 <!-- Mode-specific controls will be injected here -->
@@ -128,24 +199,46 @@
                 <div class="deck-header">
                     <h3>Deck B</h3>
                     <div class="deck-controls">
-                        <button class="play-btn hoverable gesture-button" id="play-b" data-gesture="pointer" data-action="play_pause" data-deck="b">
-                            <span class="button-icon">▶️</span>
-                            <span class="gesture-hint">▶ Pointer</span>
+                        <button class="play-btn hoverable gesture-button" id="play-b" data-gesture="tap" data-action="play_pause" data-deck="b">
+                            <span class="button-label">PLAY</span>
+                            <span class="gesture-hint">Tap</span>
                         </button>
-                        <button class="stop-btn hoverable gesture-button" id="stop-b" data-gesture="two_fingers" data-action="stop" data-deck="b">
-                            <span class="button-icon">⏹️</span>
-                            <span class="gesture-hint">◈ Two Fingers</span>
+                        <button class="stop-btn hoverable gesture-button" id="stop-b" data-gesture="thumbs_down" data-action="stop" data-deck="b">
+                            <span class="button-label">STOP</span>
+                            <span class="gesture-hint">Thumbs Down</span>
                         </button>
                         <span class="bpm" id="bpm-b">120.0</span>
                     </div>
                 </div>
 
-                <div class="track-info hoverable" id="track-info-b" data-deck="b" data-action="load_track">
+                <div class="track-info" id="track-info-b">
                     <div class="track-title">No Track Loaded</div>
-                    <div class="track-artist">Click or fist gesture to load track</div>
+                    <div class="track-artist">Ready to load</div>
                     <div class="track-time">
                         <span id="current-time-b">00:00</span> /
                         <span id="total-time-b">00:00</span>
+                    </div>
+                    <button class="load-track-btn hoverable" id="load-track-b" data-deck="b">
+                        <span>LOAD TRACK</span>
+                    </button>
+
+                    <div class="track-navigation">
+                        <button class="track-nav-btn" id="prev-track-b" data-deck="b">
+                            <span class="nav-icon">
+                                <svg viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/>
+                                </svg>
+                            </span>
+                            <span>PREV</span>
+                        </button>
+                        <button class="track-nav-btn" id="next-track-b" data-deck="b">
+                            <span>NEXT</span>
+                            <span class="nav-icon">
+                                <svg viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M16 18h2V6h-2zm-11-6l8.5-6v12z"/>
+                                </svg>
+                            </span>
+                        </button>
                     </div>
                 </div>
 
@@ -153,7 +246,6 @@
                     <canvas class="waveform" id="waveform-b" width="600" height="120"></canvas>
                     <div class="position-marker" id="position-b"></div>
                     <button class="sync-btn hoverable" id="sync-b" data-deck="b">
-                        <span class="sync-icon">⟲</span>
                         <span class="sync-label">SYNC</span>
                     </button>
                 </div>
@@ -168,6 +260,175 @@
             </div>
         </div>
 
+        <!-- FX and Loop Mode Control Panels (displayed below decks) -->
+        <!-- FX Controls Panel (shown when FX mode is active) -->
+        <div class="fx-controls-panel-below" id="fx-controls-panel" style="display: none;">
+            <div class="fx-header">
+                <h3>FX CONTROLS</h3>
+                <button class="fx-enable-btn" id="fx-enable-btn">
+                    <span class="enable-indicator" id="fx-enable-indicator"></span>
+                    <span id="fx-enable-text">ENABLE FILTER</span>
+                </button>
+            </div>
+
+            <!-- Filter Type Selector -->
+            <div class="fx-control-group">
+                <label class="fx-label">FILTER TYPE</label>
+                <div class="filter-type-selector">
+                    <button class="filter-type-btn active" data-filter-type="lowpass">
+                        <span>LOWPASS</span>
+                    </button>
+                    <button class="filter-type-btn" data-filter-type="highpass">
+                        <span>HIGHPASS</span>
+                    </button>
+                    <button class="filter-type-btn" data-filter-type="bandpass">
+                        <span>BANDPASS</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Cutoff Frequency Slider -->
+            <div class="fx-control-group">
+                <label class="fx-label">CUTOFF FREQUENCY</label>
+                <div class="fx-slider-container">
+                    <input type="range" class="fx-slider" id="fx-cutoff-slider"
+                           min="20" max="20000" value="1000" step="10">
+                    <div class="fx-value-display">
+                        <span id="fx-cutoff-value">1000</span>
+                        <span class="fx-unit">Hz</span>
+                    </div>
+                </div>
+                <div class="fx-slider-marks">
+                    <span>20Hz</span>
+                    <span>200Hz</span>
+                    <span>2kHz</span>
+                    <span>20kHz</span>
+                </div>
+            </div>
+
+            <!-- Resonance (Q Factor) Slider -->
+            <div class="fx-control-group">
+                <label class="fx-label">RESONANCE (Q)</label>
+                <div class="fx-slider-container">
+                    <input type="range" class="fx-slider" id="fx-resonance-slider"
+                           min="0.1" max="20" value="1.0" step="0.1">
+                    <div class="fx-value-display">
+                        <span id="fx-resonance-value">1.0</span>
+                    </div>
+                </div>
+                <div class="fx-slider-marks">
+                    <span>Soft</span>
+                    <span>Medium</span>
+                    <span>Sharp</span>
+                </div>
+            </div>
+
+            <!-- Wet/Dry Mix Slider -->
+            <div class="fx-control-group">
+                <label class="fx-label">WET/DRY MIX</label>
+                <div class="fx-slider-container">
+                    <input type="range" class="fx-slider" id="fx-wetdry-slider"
+                           min="0" max="100" value="50" step="1">
+                    <div class="fx-value-display">
+                        <span id="fx-wetdry-value">50</span>
+                        <span class="fx-unit">%</span>
+                    </div>
+                </div>
+                <div class="fx-slider-marks">
+                    <span>Dry</span>
+                    <span>50/50</span>
+                    <span>Wet</span>
+                </div>
+            </div>
+
+            <!-- Visual Frequency Response Graph -->
+            <div class="fx-control-group">
+                <label class="fx-label">FREQUENCY RESPONSE</label>
+                <canvas id="fx-frequency-graph" width="300" height="100"></canvas>
+            </div>
+        </div>
+
+        <!-- Loop Controls Panel (shown when Loop mode is active) -->
+        <div class="loop-controls-panel-below" id="loop-controls-panel" style="display: none;">
+            <div class="loop-header">
+                <h3>LOOP CONTROLS</h3>
+                <button class="loop-enable-btn" id="loop-enable-btn">
+                    <span class="enable-indicator" id="loop-enable-indicator"></span>
+                    <span id="loop-enable-text">ACTIVATE LOOP</span>
+                </button>
+            </div>
+
+            <!-- Loop Length Selector -->
+            <div class="loop-control-group">
+                <label class="loop-label">LOOP LENGTH (BEATS)</label>
+                <div class="loop-length-selector">
+                    <button class="loop-length-btn" data-length="0.25">1/4</button>
+                    <button class="loop-length-btn" data-length="0.5">1/2</button>
+                    <button class="loop-length-btn" data-length="1">1</button>
+                    <button class="loop-length-btn" data-length="2">2</button>
+                    <button class="loop-length-btn active" data-length="4">4</button>
+                    <button class="loop-length-btn" data-length="8">8</button>
+                    <button class="loop-length-btn" data-length="16">16</button>
+                    <button class="loop-length-btn" data-length="32">32</button>
+                </div>
+            </div>
+
+            <!-- Loop Position Control -->
+            <div class="loop-control-group">
+                <label class="loop-label">LOOP POSITION</label>
+                <div class="loop-slider-container">
+                    <input type="range" class="loop-slider" id="loop-position-slider"
+                           min="0" max="100" value="0" step="0.1">
+                    <div class="loop-value-display">
+                        <span id="loop-position-value">0.0</span>
+                        <span class="loop-unit">s</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Loop In/Out Points -->
+            <div class="loop-control-group">
+                <label class="loop-label">LOOP POINTS</label>
+                <div class="loop-points-container">
+                    <button class="loop-point-btn" id="loop-in-btn">
+                        <span>SET IN</span>
+                        <span class="loop-point-value" id="loop-in-value">0.0s</span>
+                    </button>
+                    <button class="loop-point-btn" id="loop-out-btn">
+                        <span>SET OUT</span>
+                        <span class="loop-point-value" id="loop-out-value">4.0s</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Quick Loop Actions -->
+            <div class="loop-control-group">
+                <label class="loop-label">QUICK ACTIONS</label>
+                <div class="loop-actions">
+                    <button class="loop-action-btn" id="loop-roll-btn">
+                        <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
+                            <path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/>
+                        </svg>
+                        <span>LOOP ROLL</span>
+                    </button>
+                    <button class="loop-action-btn" id="loop-double-btn">
+                        <span>×2</span>
+                        <span>DOUBLE</span>
+                    </button>
+                    <button class="loop-action-btn" id="loop-half-btn">
+                        <span>÷2</span>
+                        <span>HALVE</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Loop Visualization -->
+            <div class="loop-control-group">
+                <label class="loop-label">LOOP VISUALIZATION</label>
+                <canvas id="loop-visualization" width="300" height="80"></canvas>
+            </div>
+        </div>
+
         <!-- Connection status -->
         <div class="connection-indicator">
             <span id="connection-status">●</span>
@@ -177,10 +438,14 @@
     <!-- Gesture cursors removed - using direct gesture control instead -->
 
     <!-- Scripts -->
+    <script src="js/icons.js"></script>
     <script src="js/websocket-client.js"></script>
     <script src="js/gesture-ui.js"></script>
     <script src="js/waveform.js"></script>
     <script src="js/audio-controls.js"></script>
+    <script src="js/fx-controls.js"></script>
+    <script src="js/loop-controls.js"></script>
+    <script src="js/library-manager.js"></script>
     <script src="js/main.js"></script>
 </body>
 </html>

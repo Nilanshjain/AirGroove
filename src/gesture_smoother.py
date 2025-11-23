@@ -8,25 +8,36 @@ from collections import deque
 from typing import Dict, List, Optional
 import time
 
+# Handle imports for both direct run and module import
+try:
+    from config_loader import get_config
+except ImportError:
+    from src.config_loader import get_config
+
 class GestureSmoother:
     """Smooths gesture detection across multiple frames for stability."""
 
-    def __init__(self, buffer_size: int = 10, confidence_threshold: float = 0.7):
+    def __init__(self, buffer_size: int = None, confidence_threshold: float = None):
         """
         Initialize gesture smoother.
 
         Args:
-            buffer_size: Number of frames to buffer for smoothing
-            confidence_threshold: Minimum confidence for gesture acceptance
+            buffer_size: Number of frames to buffer for smoothing (None = use config)
+            confidence_threshold: Minimum confidence for gesture acceptance (None = use config)
         """
-        self.buffer_size = buffer_size
-        self.confidence_threshold = confidence_threshold
+        # Load config
+        config = get_config()
+
+        # Use config values if not explicitly provided
+        self.buffer_size = buffer_size if buffer_size is not None else config.get_smoothing_buffer_size()
+        self.confidence_threshold = confidence_threshold if confidence_threshold is not None else config.get_smoothing_confidence()
+        self.stability_threshold = config.get_smoothing_stability()
 
         # Buffers for each hand
-        self.left_gesture_buffer = deque(maxlen=buffer_size)
-        self.right_gesture_buffer = deque(maxlen=buffer_size)
-        self.left_confidence_buffer = deque(maxlen=buffer_size)
-        self.right_confidence_buffer = deque(maxlen=buffer_size)
+        self.left_gesture_buffer = deque(maxlen=self.buffer_size)
+        self.right_gesture_buffer = deque(maxlen=self.buffer_size)
+        self.left_confidence_buffer = deque(maxlen=self.buffer_size)
+        self.right_confidence_buffer = deque(maxlen=self.buffer_size)
 
         # Current stable states
         self.stable_left_gesture = "none"
@@ -36,7 +47,7 @@ class GestureSmoother:
         # Transition detection
         self.last_stable_state = "browsing"
         self.state_change_time = time.time()
-        self.min_state_duration = 0.3  # Minimum time in state before allowing change
+        self.min_state_duration = config.get('gestures', 'smoothing', 'state_change_cooldown', default=0.2)
 
     def smooth_gestures(self, gesture_state: Dict) -> Dict:
         """
@@ -146,8 +157,8 @@ class GestureSmoother:
                 best_score = score
                 best_gesture = gesture
 
-        # Require minimum agreement (60% of frames)
-        required_count = max(1, int(len(gesture_buffer) * 0.6))
+        # Require minimum agreement (use stability threshold from config)
+        required_count = max(1, int(len(gesture_buffer) * self.stability_threshold))
         if gesture_counts.get(best_gesture, 0) >= required_count:
             return best_gesture
         else:

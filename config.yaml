@@ -1,0 +1,424 @@
+# AirGroove Configuration File
+# All gesture thresholds, timings, and audio settings
+
+# ==================== CAMERA SETTINGS ====================
+camera:
+  width: 640
+  height: 480
+  fps: 30
+  device_index: 0  # 0 = default camera
+
+# ==================== GESTURE DETECTION ====================
+gestures:
+  # MediaPipe settings
+  mediapipe:
+    max_num_hands: 2
+    min_detection_confidence: 0.7
+    min_tracking_confidence: 0.5
+    model_complexity: 1  # 0=lite, 1=full (default)
+
+  # Smoothing settings
+  smoothing:
+    buffer_size: 4  # frames (reduced from 10 for lower latency)
+    confidence_threshold: 0.7
+    stability_threshold: 0.6  # 60% agreement required
+    state_change_cooldown: 0.2  # seconds
+
+  # Hand swap (for mirror mode)
+  swap_hands: true
+
+  # Individual gesture thresholds
+  thresholds:
+    # Finger detection
+    finger_fold_threshold: 0.10  # Distance for finger to be considered folded
+    thumb_fold_threshold: 0.08
+
+    # Pinch gesture
+    pinch_threshold: 0.04  # Thumb-index distance for pinch
+    pinch_release_threshold: 0.06  # Hysteresis
+
+    # Open palm
+    palm_openness_threshold: 0.10  # All fingers must be this extended
+
+    # Closed fist
+    fist_closeness_threshold: 0.08  # All fingers must be this close
+
+    # Thumbs up/down detection - STRICTER to avoid false positives
+    thumbs_up:
+      thumb_extension_min: 0.15  # Thumb must be CLEARLY extended (+25% stricter)
+      thumb_angle_min: 60  # degrees from horizontal
+      thumb_angle_max: 120
+      thumb_separation_min: 0.10  # Thumb must be FAR from fingers (+25% stricter)
+      other_fingers_folded_max: 0.08
+
+    thumbs_down:
+      thumb_extension_min: 0.15  # Thumb must be CLEARLY extended (+25% stricter)
+      thumb_angle_min: 240  # degrees (pointing down)
+      thumb_angle_max: 300
+      thumb_separation_min: 0.10  # Thumb must be FAR from fingers (+25% stricter)
+      other_fingers_folded_max: 0.08
+
+    # Two fingers (peace sign variant)
+    two_fingers:
+      index_extension_min: 0.10
+      middle_extension_min: 0.10
+      other_fingers_folded_max: 0.08
+
+    # Peace sign (V)
+    peace_sign:
+      index_extension_min: 0.10
+      middle_extension_min: 0.10
+      finger_separation_min: 0.05  # V-shape detection
+      other_fingers_folded_max: 0.08
+
+    # Rock sign (🤘)
+    rock_sign:
+      index_extension_min: 0.10
+      pinky_extension_min: 0.10
+      middle_ring_folded_max: 0.08
+      thumb_position: "any"  # Flexible
+
+    # Tap gesture
+    tap:
+      velocity_threshold: 0.5  # m/s downward
+      distance_min: 0.10  # 10cm minimum drop (normalized)
+      distance_max: 0.25  # 25cm maximum
+      time_window: 0.2  # seconds
+      cooldown: 0.2  # seconds between taps
+
+    # Palm rotation (for scratching)
+    palm_rotation:
+      angle_threshold: 15  # degrees minimum rotation to detect
+      velocity_threshold: 30  # degrees/sec minimum
+      smoothing_frames: 2
+
+    # Swipe detection - VERY LENIENT for easy mode switching
+    swipe:
+      distance_threshold: 0.12  # 12% of screen width - very easy!
+      velocity_threshold: 0.15  # units/sec - slow movements OK
+      time_window: 1.0  # seconds max - more time allowed
+      min_frames: 3  # minimum frames - detect quickly
+      dead_zone_radius: 0.05  # 5% from screen edges
+      cooldown: 0.3  # seconds
+      direction_consistency_threshold: 0.5  # 50% consistency - very forgiving
+
+  # Gesture cooldowns (seconds)
+  cooldowns:
+    tap: 0.2  # Play/pause
+    thumbs_up: 1.0  # Load track
+    thumbs_down: 1.0  # Unload track
+    swipe: 0.3  # Mode selection
+    mode_switch: 0.5  # Between mode changes
+    pinch: 0.0  # No cooldown (continuous control)
+    peace_sign: 0.3
+    rock_sign: 0.3
+
+  # Hold times (seconds before action triggers)
+  hold_times:
+    thumbs_up: 0.8
+    thumbs_down: 0.8
+    peace_sign: 0.5  # For loop in/out points
+    mode_activation: 0.8  # Hold fist to activate mode
+
+# ==================== AUDIO SETTINGS ====================
+audio:
+  # Audio backend
+  backend: "sounddevice"  # Options: "sounddevice", "pygame" (fallback)
+
+  # Sample rate and buffer
+  sample_rate: 44100  # Hz (CD quality)
+  buffer_size: 2048  # samples (lower = less latency, higher = more stable)
+  channels: 2  # Stereo
+  dtype: "float32"
+
+  # Crossfader settings
+  crossfader:
+    curve_type: "constant_power"  # Options: "constant_power", "linear", "sharp_cut"
+    curve_steepness: 1.0  # Adjustment factor (1.0 = default)
+    reset_position: 0.5  # Center position (0.0 = Deck A, 1.0 = Deck B)
+
+  # Master output
+  master:
+    volume: 1.0  # 0.0 to 1.0
+    limiter_enabled: true
+    limiter_threshold: -0.5  # dB
+    limiter_attack: 0.001  # seconds
+    limiter_release: 0.1  # seconds
+
+  # Deck settings
+  deck:
+    fade_in_time: 0.01  # seconds (prevents clicks on play)
+    fade_out_time: 0.05  # seconds (on stop)
+    brake_time: 1.0  # seconds (for brake effect)
+
+  # Effects settings
+  effects:
+    # Filter
+    filter:
+      freq_min: 20  # Hz
+      freq_max: 20000  # Hz
+      default_freq: 1000  # Hz
+      resonance_min: 0.5  # Q factor
+      resonance_max: 10.0
+      default_resonance: 0.707  # Butterworth
+
+    # Echo/Delay
+    echo:
+      delay_min: 0.05  # seconds (50ms)
+      delay_max: 2.0  # seconds
+      feedback_min: 0.0
+      feedback_max: 0.95  # Prevent runaway feedback
+      default_delay: 0.375  # seconds (synced to 120 BPM = 1/2 beat)
+
+    # Reverb
+    reverb:
+      room_size_min: 0.1
+      room_size_max: 1.0
+      decay_time_min: 0.1  # seconds
+      decay_time_max: 5.0  # seconds
+      damping: 0.5  # High frequency absorption
+
+    # Mix
+    mix:
+      wet_min: 0.0
+      wet_max: 1.0
+      default_wet: 0.5
+
+  # Loop settings
+  loop:
+    auto_quantize: true  # Snap to beat grid
+    quantize_values: [0.25, 0.5, 1, 2, 4, 8, 16]  # beats
+    default_length: 4  # beats
+    crossfade_time: 0.01  # seconds (at loop boundaries)
+    loop_roll_enabled: true
+
+  # Scratch settings
+  scratch:
+    playback_rate_min: -2.0  # -200%
+    playback_rate_max: 2.0  # +200%
+    pitch_preservation: true  # Use time-stretching
+    motor_on_default: false  # Stop when hand released
+    acceleration_curve: "logarithmic"  # Options: "linear", "logarithmic", "exponential"
+
+  # BPM sync
+  sync:
+    auto_sync_enabled: true
+    tempo_range_percent: 8  # ±8% tempo adjustment range
+    beat_grid_resolution: 16  # subdivisions per beat
+    phase_sync_enabled: true
+
+# ==================== MODE SETTINGS ====================
+modes:
+  # Default mode on startup
+  default: "normal"
+
+  # Mode activation methods
+  activation:
+    method: "swipe"  # Options: "swipe", "hold_fist", "button"
+    show_mode_indicator: true
+    mode_transition_time: 0.3  # seconds (animation)
+
+  # Mode-specific gesture mappings (see gesture system in claude.md)
+  normal:
+    enabled_gestures: ["tap", "thumbs_up", "thumbs_down", "swipe", "pinch"]
+
+  fx:
+    enabled_gestures: ["peace_sign", "pinch", "two_fingers", "pointer"]
+    default_effect: "filter"
+
+  loop:
+    enabled_gestures: ["peace_sign", "pointer", "two_fingers"]
+    default_loop_length: 4  # beats
+
+  scratch:
+    enabled_gestures: ["palm_rotation", "pointer", "pinch", "two_fingers"]
+    turntable_mode: "vinyl"  # Options: "vinyl", "cdj"
+
+# ==================== UI SETTINGS ====================
+ui:
+  # Theme
+  theme: "dark"  # Options: "dark", "light", "club"
+  console_style: "cdj"  # Options: "cdj", "turntable", "minimal"
+
+  # Visual feedback
+  hand_skeleton:
+    enabled: true
+    color: "#00ffff"
+    opacity: 0.7
+
+  gesture_confidence:
+    show_meter: true
+    show_percentage: true
+
+  mode_activation:
+    show_progress_ring: true
+    show_countdown: true
+
+  # Waveform
+  waveform:
+    height: 120  # pixels
+    width: 600  # pixels
+    color_deck_a: "#ff6b6b"
+    color_deck_b: "#4ecdc4"
+    show_beat_grid: true
+    show_cue_points: true
+
+  # Animations
+  animations:
+    fps_target: 60
+    enable_transitions: true
+    enable_reactive_lighting: true
+    enable_beat_flash: true
+
+  # Tutorial
+  tutorial:
+    show_on_first_launch: true
+    show_gesture_hints: true
+    practice_mode_available: true
+
+  # Settings panel
+  settings:
+    show_advanced: false  # Hide advanced settings by default
+    allow_custom_thresholds: true
+
+# ==================== PERFORMANCE SETTINGS ====================
+performance:
+  # Threading
+  use_multiprocessing: false  # true for multi-core, false for simpler threading
+  gesture_thread_priority: "high"
+  audio_thread_priority: "realtime"
+
+  # Latency optimization
+  target_latency_ms: 150  # Total end-to-end
+  enable_predictive_gestures: false  # Experimental: ML-based prediction
+
+  # Resource limits
+  max_fps: 60  # UI rendering
+  max_gesture_updates_per_sec: 60
+  max_audio_callbacks_per_sec: 100
+
+  # Memory
+  waveform_cache_size_mb: 50
+  audio_buffer_pool_size: 10
+
+# ==================== CALIBRATION SETTINGS ====================
+calibration:
+  # Auto-calibration
+  enabled: true
+  run_on_first_launch: true
+
+  # Calibration process
+  gestures_to_calibrate: [
+    "open_palm",
+    "closed_fist",
+    "pinch",
+    "thumbs_up",
+    "thumbs_down",
+    "peace_sign",
+    "tap"
+  ]
+
+  repetitions_per_gesture: 3
+
+  # Adaptation
+  lighting_adaptation: true
+  hand_size_adaptation: true
+  detect_hand_dominance: true
+
+  # Profile management
+  save_profile: true
+  profile_location: "calibration_profiles/"
+  allow_multiple_profiles: true
+
+# ==================== USER PROFILES ====================
+profiles:
+  # Active profile
+  active: "intermediate"
+
+  # Predefined profiles
+  beginner:
+    gesture_sensitivity: 0.7  # Lower = more forgiving
+    cooldown_multiplier: 1.5  # 50% longer cooldowns
+    hold_time_multiplier: 1.3
+    show_hints: true
+
+  intermediate:
+    gesture_sensitivity: 1.0  # Default
+    cooldown_multiplier: 1.0
+    hold_time_multiplier: 1.0
+    show_hints: false
+
+  expert:
+    gesture_sensitivity: 1.3  # Higher = more precise
+    cooldown_multiplier: 0.7  # 30% shorter cooldowns
+    hold_time_multiplier: 0.7
+    show_hints: false
+
+# ==================== WEBSOCKET SETTINGS ====================
+websocket:
+  host: "localhost"
+  port: 8765
+
+  # Message settings
+  max_queue_size: 100
+  message_batch_size: 1  # Messages to send per batch
+  update_rate_hz: 60  # Gesture updates per second
+
+  # Connection
+  auto_reconnect: true
+  reconnect_attempts: 5
+  reconnect_delay: 2  # seconds
+  ping_interval: 20  # seconds
+  pong_timeout: 10  # seconds
+
+# ==================== LOGGING SETTINGS ====================
+logging:
+  level: "INFO"  # Options: "DEBUG", "INFO", "WARNING", "ERROR"
+  log_to_file: true
+  log_file: "airgroove.log"
+  log_gestures: false  # Detailed gesture logging (performance impact)
+  log_audio: false  # Audio processing logging
+  max_log_size_mb: 10
+  log_rotation: 5  # Keep 5 backup logs
+
+# ==================== DEVELOPMENT SETTINGS ====================
+development:
+  debug_mode: false
+  show_fps: true
+  show_latency: true
+  enable_gesture_visualization: true
+  enable_audio_visualization: true
+  profile_performance: false  # Use cProfile
+
+  # Testing
+  use_test_audio: false
+  test_audio_path: "audio/test_track.mp3"
+  skip_camera: false  # Use recorded gesture data
+  recorded_gesture_path: ""
+
+# ==================== EXPERIMENTAL FEATURES ====================
+experimental:
+  # Machine learning gesture recognition
+  ml_gestures:
+    enabled: false
+    model_path: "models/gesture_classifier.h5"
+
+  # Predictive gesture recognition
+  predictive_recognition:
+    enabled: false
+    lookahead_frames: 3
+
+  # Advanced audio
+  harmonic_mixing:
+    enabled: false  # Key-aware track matching
+
+  neural_fx:
+    enabled: false  # AI-powered effects
+
+# ==================== FILE PATHS ====================
+paths:
+  audio_library: "audio/"
+  calibration_profiles: "calibration_profiles/"
+  logs: "logs/"
+  cache: "cache/"
+  models: "models/"

@@ -24,9 +24,20 @@ class GestureUI {
         this.leftPosition = { x: 0, y: 0 };
         this.rightPosition = { x: 0, y: 0 };
 
-        // Action cooldowns
+        // Action cooldowns - prevent rapid-fire triggering
         this.lastActionTime = {};
         this.actionCooldown = 600; // ms
+
+        // Play/pause specific cooldown - longer to prevent toggling
+        this.lastPlayPauseTime = {};
+        this.playPauseCooldown = 1000; // 1 second cooldown for play/pause
+
+        // Fist gesture tracking for edge detection
+        this.fistActiveTime = {
+            left: 0,
+            right: 0
+        };
+        this.fistMinHoldTime = 200; // Must hold fist for 200ms before triggering
 
         // UI elements
         this.modeButtons = document.querySelectorAll('.mode-btn');
@@ -231,22 +242,42 @@ class GestureUI {
 
         // Closed fist = play/pause for corresponding deck
         if (gesture === 'closed_fist') {
-            if (this.gestureJustChanged(hand, 'closed_fist')) {
-                console.log(`[Action] ${hand} hand fist -> Play/Pause Deck ${deck.toUpperCase()}`);
-                this.triggerAction('play_pause', { deck: deck });
+            const currentTime = Date.now();
+            const previousGesture = hand === 'left' ? this.previousLeftGesture : this.previousRightGesture;
+
+            // Edge detection: only trigger on transition TO closed_fist
+            if (previousGesture !== 'closed_fist') {
+                // Mark when fist gesture started
+                this.fistActiveTime[hand] = currentTime;
+            } else {
+                // Check if fist has been held long enough and cooldown has passed
+                const fistHeldDuration = currentTime - this.fistActiveTime[hand];
+                const lastPlayPause = this.lastPlayPauseTime[deck] || 0;
+                const timeSinceLastPlayPause = currentTime - lastPlayPause;
+
+                // Only trigger if:
+                // 1. Fist has been held for minimum time (prevents accidental triggers)
+                // 2. Cooldown period has passed (prevents rapid toggling)
+                // 3. Haven't already triggered this gesture hold
+                if (fistHeldDuration >= this.fistMinHoldTime &&
+                    timeSinceLastPlayPause >= this.playPauseCooldown &&
+                    fistHeldDuration < (this.fistMinHoldTime + 100)) { // Small window to trigger once
+
+                    console.log(`[Action] ${hand} hand fist (held ${fistHeldDuration}ms) -> Play/Pause Deck ${deck.toUpperCase()}`);
+                    this.lastPlayPauseTime[deck] = currentTime;
+                    this.triggerAction('play_pause', { deck: deck });
+                }
             }
+        } else {
+            // Reset fist timer when gesture changes
+            this.fistActiveTime[hand] = 0;
         }
 
-        // Pinch = Load track for deck
-        else if (gesture === 'pinch') {
-            if (this.gestureJustChanged(hand, 'pinch')) {
-                console.log(`[Action] ${hand} hand pinch -> Load Track to Deck ${deck.toUpperCase()}`);
-                this.triggerAction('load_track', { deck: deck });
-            }
-        }
+        // Pinch = Volume control for deck (removed load_track - use button instead)
+        // Pinch gesture now reserved for mode-specific controls
 
         // Pointer = Cue/Sync
-        else if (gesture === 'pointer') {
+        if (gesture === 'pointer') {
             if (this.gestureJustChanged(hand, 'pointer')) {
                 console.log(`[Action] ${hand} hand pointer -> Sync Deck ${deck.toUpperCase()}`);
                 this.triggerAction('sync', { deck: deck });
@@ -254,7 +285,7 @@ class GestureUI {
         }
 
         // Two fingers = Stop deck
-        else if (gesture === 'two_fingers') {
+        if (gesture === 'two_fingers') {
             if (this.gestureJustChanged(hand, 'two_fingers')) {
                 console.log(`[Action] ${hand} hand two fingers -> Stop Deck ${deck.toUpperCase()}`);
                 this.triggerAction('stop', { deck: deck });
@@ -262,7 +293,7 @@ class GestureUI {
         }
 
         // Open palm with current mode active = mode control
-        else if (gesture === 'open_palm' && this.currentMode) {
+        if (gesture === 'open_palm' && this.currentMode) {
             this.applyModeControl(hand, position);
         }
     }
@@ -297,28 +328,8 @@ class GestureUI {
                     this.showActionFeedback(action, params.deck);
                     break;
 
-                case 'load_track':
-                    // Load demo track based on deck
-                    const demoTracks = [
-                        { path: 'audio/Ainozama.mp3', name: 'Ainozama' },
-                        { path: 'audio/pianos-by-jtwayne-7-174717.mp3', name: 'Pianos' }
-                    ];
-                    const track = demoTracks[params.deck === 'a' ? 0 : 1];
-
-                    window.wsClient.sendAudioControl('load_track', {
-                        deck: params.deck,
-                        file_path: track.path,
-                        file_name: track.name
-                    });
-
-                    // Update UI
-                    const trackTitle = document.querySelector(`#track-info-${params.deck} .track-title`);
-                    const trackArtist = document.querySelector(`#track-info-${params.deck} .track-artist`);
-                    if (trackTitle) trackTitle.textContent = track.name;
-                    if (trackArtist) trackArtist.textContent = 'Demo Track';
-
-                    this.showActionFeedback(`Load: ${track.name}`, params.deck);
-                    break;
+                // load_track removed - use Load Track button in UI instead
+                // This prevents accidental track loading from gestures
 
                 case 'stop_all':
                     window.wsClient.sendAudioControl('stop', { deck: 'a' });
@@ -436,22 +447,30 @@ class GestureUI {
     }
 
     updateGestureDisplays(gestureData) {
-        // Update gesture emoji displays
+        // Update gesture emoji displays - show ALL detected gestures
         const gestureEmojis = {
             'open_palm': '✋',
             'closed_fist': '✊',
-            'pinch': '👌',
-            'pointer': '👉',
+            'pinch': '🤌',
+            'pointer': '☝️',
             'two_fingers': '✌️',
+            'thumbs_up': '👍',
+            'thumbs_down': '👎',
             'none': '—'
         };
 
+        // Make sure we're displaying the current gesture from the data
+        const leftGesture = gestureData.left_hand?.gesture || 'none';
+        const rightGesture = gestureData.right_hand?.gesture || 'none';
+
         if (this.leftGestureDisplay) {
-            this.leftGestureDisplay.textContent = gestureEmojis[this.leftGesture] || '?';
+            this.leftGestureDisplay.textContent = gestureEmojis[leftGesture] || '❓';
+            this.leftGestureDisplay.title = leftGesture.replace('_', ' ').toUpperCase();
         }
 
         if (this.rightGestureDisplay) {
-            this.rightGestureDisplay.textContent = gestureEmojis[this.rightGesture] || '?';
+            this.rightGestureDisplay.textContent = gestureEmojis[rightGesture] || '❓';
+            this.rightGestureDisplay.title = rightGesture.replace('_', ' ').toUpperCase();
         }
     }
 
@@ -511,10 +530,10 @@ class GestureUI {
         ║                                              ║
         ║ SINGLE HAND CONTROLS:                       ║
         ║ • Closed Fist    → Play/Pause Deck          ║
-        ║ • Pinch          → Load Track                ║
         ║ • Pointer        → Sync Deck                 ║
         ║ • Two Fingers    → Stop Deck                 ║
         ║ • Open Palm      → Swipe for modes          ║
+        ║ • Pinch          → (Reserved for modes)     ║
         ║                                              ║
         ║ TWO HAND COMBINATIONS:                      ║
         ║ • Both Open      → Neutral/Browse           ║
